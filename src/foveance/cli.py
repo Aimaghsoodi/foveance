@@ -89,19 +89,52 @@ def cmd_demo(args: argparse.Namespace) -> int:
     return 0
 
 
+def _load_config_file() -> dict:
+    """Load default settings from ``~/.foveance.toml`` then ``./.foveance.toml`` (the latter
+    overrides the former key-by-key). Uses the stdlib ``tomllib`` (Python 3.11+); on 3.10,
+    where it isn't available, config files are silently skipped and flags/env vars still work."""
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        return {}
+
+    import os
+
+    config: dict = {}
+    for path in (os.path.expanduser("~/.foveance.toml"), ".foveance.toml"):
+        if not os.path.isfile(path):
+            continue
+        with open(path, "rb") as fh:
+            config.update(tomllib.load(fh))
+    return config
+
+
 def _proxy_from_args(args: argparse.Namespace):
-    """Build a configured FoveanceProxy from CLI flags with env-var fallbacks (shared by
-    ``proxy`` and ``wrap``). Returns (proxy, upstream)."""
+    """Build a configured FoveanceProxy from CLI flags, with fallback to env vars, then to
+    ``~/.foveance.toml``/``./.foveance.toml``, then built-in defaults (shared by ``proxy``
+    and ``wrap``). Returns (proxy, upstream)."""
     import os
 
     from .proxy import FoveanceProxy
 
-    upstream = args.upstream or os.environ.get("FOVEANCE_UPSTREAM", "http://localhost:11434/v1")
-    budget = args.budget if args.budget is not None else int(os.environ.get("FOVEANCE_BUDGET", "2000"))
-    drift = args.drift if args.drift is not None else float(os.environ.get("FOVEANCE_DRIFT", "0.6"))
-    policy = args.policy or os.environ.get("FOVEANCE_POLICY", "foveance")
-    protect = (args.agentic_protect_last if args.agentic_protect_last is not None
-               else int(os.environ.get("FOVEANCE_AGENTIC_PROTECT_LAST", "3")))
+    config = _load_config_file()
+
+    def setting(arg_val, env_name, key, default, cast):
+        if arg_val is not None:
+            return arg_val
+        if env_name in os.environ:
+            return cast(os.environ[env_name])
+        if key in config:
+            return cast(config[key])
+        return default
+
+    upstream = setting(args.upstream, "FOVEANCE_UPSTREAM", "upstream",
+                       "http://localhost:11434/v1", str)
+    budget = setting(args.budget, "FOVEANCE_BUDGET", "budget", 2000, int)
+    drift = setting(args.drift, "FOVEANCE_DRIFT", "drift", 0.6, float)
+    policy = setting(args.policy, "FOVEANCE_POLICY", "policy", "foveance", str)
+    protect = setting(args.agentic_protect_last, "FOVEANCE_AGENTIC_PROTECT_LAST",
+                      "agentic_protect_last", 3, int)
     proxy = FoveanceProxy(budget=budget, drift=drift, policy=policy, agentic_protect_last=protect,
                           cache_aware=args.cache_aware, price_per_mtok=args.price_per_mtok)
     return proxy, upstream

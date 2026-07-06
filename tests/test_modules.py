@@ -1,5 +1,6 @@
 """Tests for embedders, compressors, baselines, metrics, learned, proxy, and cli."""
 import json
+import sys
 
 import pytest
 
@@ -251,3 +252,73 @@ def test_cli_no_command_prints_help(capsys):
     from foveance.cli import main
     assert main([]) == 0
     assert "usage" in capsys.readouterr().out.lower()
+
+
+def _proxy_args(**overrides):
+    import argparse
+    base = dict(upstream=None, budget=None, drift=None, policy=None,
+                agentic_protect_last=None, cache_aware=False, price_per_mtok=3.0)
+    base.update(overrides)
+    return argparse.Namespace(**base)
+
+
+requires_tomllib = pytest.mark.skipif(
+    sys.version_info < (3, 11), reason="tomllib is stdlib only on Python 3.11+")
+
+
+def test_config_file_absent_falls_back_to_builtin_defaults(tmp_path, monkeypatch):
+    from foveance.cli import _proxy_from_args
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("FOVEANCE_BUDGET", raising=False)
+    proxy, upstream = _proxy_from_args(_proxy_args())
+    assert proxy.budget == 2000
+    assert upstream == "http://localhost:11434/v1"
+
+
+@requires_tomllib
+def test_config_file_sets_defaults(tmp_path, monkeypatch):
+    from foveance.cli import _proxy_from_args
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".foveance.toml").write_text(
+        'budget = 555\ndrift = 0.25\npolicy = "recency"\nupstream = "http://x/v1"\n')
+    for var in ("FOVEANCE_BUDGET", "FOVEANCE_DRIFT", "FOVEANCE_POLICY", "FOVEANCE_UPSTREAM"):
+        monkeypatch.delenv(var, raising=False)
+    proxy, upstream = _proxy_from_args(_proxy_args())
+    assert (proxy.budget, proxy.drift, proxy.policy, upstream) == (555, 0.25, "recency", "http://x/v1")
+
+
+@requires_tomllib
+def test_env_var_overrides_config_file(tmp_path, monkeypatch):
+    from foveance.cli import _proxy_from_args
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".foveance.toml").write_text("budget = 555\n")
+    monkeypatch.setenv("FOVEANCE_BUDGET", "999")
+    proxy, _ = _proxy_from_args(_proxy_args())
+    assert proxy.budget == 999
+
+
+@requires_tomllib
+def test_cli_flag_overrides_env_and_config_file(tmp_path, monkeypatch):
+    from foveance.cli import _proxy_from_args
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".foveance.toml").write_text("budget = 555\n")
+    monkeypatch.setenv("FOVEANCE_BUDGET", "999")
+    proxy, _ = _proxy_from_args(_proxy_args(budget=42))
+    assert proxy.budget == 42
+
+
+@requires_tomllib
+def test_home_config_used_and_cwd_config_takes_precedence(tmp_path, monkeypatch):
+    from foveance.cli import _proxy_from_args
+    home_dir, cwd_dir = tmp_path / "home", tmp_path / "cwd"
+    home_dir.mkdir()
+    cwd_dir.mkdir()
+    (home_dir / ".foveance.toml").write_text("budget = 111\ndrift = 0.11\n")
+    (cwd_dir / ".foveance.toml").write_text("budget = 222\n")
+    monkeypatch.setenv("HOME", str(home_dir))
+    monkeypatch.chdir(cwd_dir)
+    monkeypatch.delenv("FOVEANCE_BUDGET", raising=False)
+    monkeypatch.delenv("FOVEANCE_DRIFT", raising=False)
+    proxy, _ = _proxy_from_args(_proxy_args())
+    assert proxy.budget == 222   # cwd overrides home
+    assert proxy.drift == 0.11   # home-only key still picked up
