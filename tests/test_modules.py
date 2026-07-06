@@ -217,6 +217,42 @@ def test_proxy_extract_text_handles_blocks():
     assert _extract_text(None) == ""
 
 
+def test_proxy_stats_use_chars_heuristic_without_token_counter():
+    from foveance.proxy import FoveanceProxy
+
+    def echo_upstream(req):
+        return {"choices": [{"message": {"role": "assistant", "content": "ok"}}]}
+
+    px = FoveanceProxy(budget=120)
+    request = {"messages": [{"role": "user", "content": "recall secret"}]}
+    resp = px.handle(request, echo_upstream)
+    assert resp["foveance"]["est_tokens_exact"] is False
+    assert px.stats()["est_tokens_exact"] is False
+
+
+def test_proxy_stats_use_exact_counter_when_configured():
+    from foveance.proxy import FoveanceProxy, _payload_text
+
+    def counter(text):
+        return len(text.split())
+
+    def echo_upstream(req):
+        return {"choices": [{"message": {"role": "assistant", "content": "ok"}}]}
+
+    px = FoveanceProxy(budget=120, token_counter=counter)
+    request = {
+        "model": "gpt-x",
+        "messages": [
+            {"role": "user", "content": "FACT secret=42 " + "log line ok " * 50},
+            {"role": "user", "content": "recall secret"},
+        ],
+    }
+    resp = px.handle(request, echo_upstream)
+    assert resp["foveance"]["est_tokens_exact"] is True
+    assert resp["foveance"]["est_tokens_before"] == counter(_payload_text(request))
+    assert px.stats()["est_tokens_exact"] is True
+
+
 def test_proxy_anthropic_transform_folds_context_into_system():
     from foveance.proxy import FoveanceProxy
     px = FoveanceProxy(budget=120)
@@ -257,7 +293,8 @@ def test_cli_no_command_prints_help(capsys):
 def _proxy_args(**overrides):
     import argparse
     base = dict(upstream=None, budget=None, drift=None, policy=None,
-                agentic_protect_last=None, cache_aware=False, price_per_mtok=3.0)
+                agentic_protect_last=None, cache_aware=False, price_per_mtok=3.0,
+                exact_tokens=False)
     base.update(overrides)
     return argparse.Namespace(**base)
 
@@ -322,3 +359,16 @@ def test_home_config_used_and_cwd_config_takes_precedence(tmp_path, monkeypatch)
     proxy, _ = _proxy_from_args(_proxy_args())
     assert proxy.budget == 222   # cwd overrides home
     assert proxy.drift == 0.11   # home-only key still picked up
+
+
+def test_cli_no_exact_tokens_flag_leaves_counter_unset():
+    from foveance.cli import _proxy_from_args
+    proxy, _ = _proxy_from_args(_proxy_args())
+    assert proxy.token_counter is None
+
+
+def test_cli_exact_tokens_flag_wires_a_token_counter():
+    from foveance.cli import _proxy_from_args
+    proxy, _ = _proxy_from_args(_proxy_args(exact_tokens=True))
+    assert proxy.token_counter is not None
+    assert proxy.token_counter("hello world") > 0

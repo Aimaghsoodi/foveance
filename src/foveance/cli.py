@@ -135,8 +135,13 @@ def _proxy_from_args(args: argparse.Namespace):
     policy = setting(args.policy, "FOVEANCE_POLICY", "policy", "foveance", str)
     protect = setting(args.agentic_protect_last, "FOVEANCE_AGENTIC_PROTECT_LAST",
                       "agentic_protect_last", 3, int)
+    token_counter = None
+    if args.exact_tokens:
+        from .metrics import make_token_counter
+        token_counter = make_token_counter()
     proxy = FoveanceProxy(budget=budget, drift=drift, policy=policy, agentic_protect_last=protect,
-                          cache_aware=args.cache_aware, price_per_mtok=args.price_per_mtok)
+                          cache_aware=args.cache_aware, price_per_mtok=args.price_per_mtok,
+                          token_counter=token_counter)
     return proxy, upstream
 
 
@@ -285,6 +290,9 @@ def build_parser() -> argparse.ArgumentParser:
                          "breakpoint (preserves the provider's prompt cache)")
     pr.add_argument("--price-per-mtok", type=float, default=3.0,
                     help="assumed $/M input tokens for the dashboard's $-saved estimate")
+    pr.add_argument("--exact-tokens", action="store_true",
+                    help="count tokens with a real tokenizer (tiktoken, if installed) instead "
+                         "of the chars/4 heuristic, for accounting and the dashboard")
     pr.set_defaults(func=cmd_proxy)
 
     w = sub.add_parser("wrap", help="run any CLI/agent through the proxy (one command); "
@@ -303,6 +311,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="never modify content at/before the last Anthropic cache_control breakpoint")
     w.add_argument("--price-per-mtok", type=float, default=3.0,
                    help="assumed $/M input tokens for the exit summary's $-saved estimate")
+    w.add_argument("--exact-tokens", action="store_true",
+                   help="count tokens with a real tokenizer (tiktoken, if installed) instead "
+                        "of the chars/4 heuristic, for accounting and the exit summary")
     w.add_argument("command", nargs=argparse.REMAINDER,
                    help="the tool to launch, e.g.: claude   or:  -- codex 'fix the tests'")
     w.set_defaults(func=cmd_wrap)
