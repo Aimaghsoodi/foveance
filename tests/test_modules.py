@@ -1,5 +1,6 @@
 """Tests for embedders, compressors, baselines, metrics, learned, proxy, and cli."""
 import json
+import sys
 
 import pytest
 
@@ -168,6 +169,14 @@ def test_learned_fit_empty_is_noop():
     before = list(m.weights)
     m.fit([], [])
     assert m.weights == before
+
+
+def test_learned_fit_without_numpy_raises_helpful_error(monkeypatch):
+    from foveance.learned import LogisticFutureRelevance
+    monkeypatch.setitem(sys.modules, "numpy", None)
+    m = LogisticFutureRelevance()
+    with pytest.raises(ImportError, match=r'foveance\[ml\]'):
+        m.fit([[1.0]], [1.0])
 
 
 # ---------------------------------------------------------------------------------- proxy
