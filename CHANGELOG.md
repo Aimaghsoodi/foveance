@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-07-07
+### Added
+- `foveance.shrink_anthropic(system, messages, budget)` — the Anthropic-shaped one-liner,
+  returning `(new_system, new_messages)` (#9).
+- Config file support: `~/.foveance.toml` and `./.foveance.toml` set defaults for budget, drift,
+  policy, upstream, and agentic-protect-last, with precedence flag > env > cwd config > home
+  config > default (#2, #12).
+- Exact token counting: `--exact-tokens` uses a real tokenizer (tiktoken, if installed) instead of
+  the chars/4 heuristic for accounting and the dashboard; the counter is pluggable via
+  `FoveanceProxy(token_counter=...)` (#7, #12).
+- Framework integrations behind extras: `foveance.integrations.litellm` (a `shrink_completion`
+  wrapper) and `foveance.integrations.langchain` (a `shrink_messages` Runnable) (#4, #5, #13).
+- Docker image + a GHCR publish workflow, so the proxy runs with `docker run` and no Python setup
+  (#8, #10, contributed by @Hayathorium).
+
+### Fixed
+- `LogisticFutureRelevance.fit()` now raises a clear ImportError when numpy is missing rather than
+  failing obscurely (#14).
+- Cross-platform config-file test now mocks the home directory on Windows (`USERPROFILE`) as well
+  as POSIX (`HOME`).
+
 ## [0.1.2] - 2026-07-04
 ### Changed
 - `pip install foveance` now includes everything a normal user needs — the `shrink()` one-liner,
