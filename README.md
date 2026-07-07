@@ -135,6 +135,14 @@ protocols, streams, and forwards your credentials untouched. It keeps a per-conv
 multi-fidelity store and spends a token budget on the context most likely to matter next, before
 forwarding upstream.
 
+### Run with Docker (Recommended)
+You can run the Foveance proxy with zero Python setup using Docker:
+```bash
+docker run -p 8799:8799 ghcr.io/aimaghsoodi/foveance --upstream https://api.openai.com/v1
+```
+
+### Run with Python / CLI
+
 ```bash
 foveance proxy --upstream https://api.openai.com/v1      # OpenAI
 foveance proxy --upstream https://api.anthropic.com/v1   # Anthropic / Claude
