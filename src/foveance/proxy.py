@@ -89,18 +89,24 @@ def _digest_text(text: str, head: int = 12, tail: int = 6, max_chars: int = 700)
     return out if len(out) < len(text) else text
 
 
-def _payload_chars(request: dict) -> int:
-    """Rough size in characters of the model-visible payload (messages / system / input /
-    instructions). Used for the running tokens-saved estimate (chars/4 ~= tokens); the estimate is
-    labelled as such everywhere it is shown and is never used in benchmark numbers."""
+def _payload_text(request: dict) -> str:
+    """Serialize the model-visible payload (messages / system / input / instructions) to a
+    string, for both the chars/4 heuristic and any configured exact tokenizer."""
     import json as _json
 
     parts = [request.get(k) for k in ("messages", "system", "input", "instructions")
              if request.get(k)]
     try:
-        return len(_json.dumps(parts, ensure_ascii=False, default=str))
+        return _json.dumps(parts, ensure_ascii=False, default=str)
     except (TypeError, ValueError):
-        return len(str(parts))
+        return str(parts)
+
+
+def _payload_chars(request: dict) -> int:
+    """Rough size in characters of the model-visible payload. Used for the running
+    tokens-saved estimate (chars/4 ~= tokens) when no exact ``token_counter`` is configured; the
+    estimate is labelled as such everywhere it is shown and is never used in benchmark numbers."""
+    return len(_payload_text(request))
 
 
 def _digest_block(blk):
@@ -186,6 +192,8 @@ class FoveanceProxy:
     compressed_requests: int = 0
     est_chars_before: int = 0
     est_chars_after: int = 0
+    est_tokens_before: int = 0
+    est_tokens_after: int = 0
 
     def _state(self, conv_id: str) -> _ConvState:
         if conv_id not in self.convs:
@@ -403,19 +411,30 @@ class FoveanceProxy:
         return resp
 
     def _account(self, request: dict, fwd: dict, stats: dict) -> dict:
-        """Record the estimated payload size before/after compression on the running totals and
-        annotate ``stats`` with per-request estimates (chars/4 ~= tokens; an estimate, not billing)."""
-        before, after = _payload_chars(request), _payload_chars(fwd)
-        self.est_chars_before += before
-        self.est_chars_after += after
+        """Record the payload size before/after compression on the running totals and annotate
+        ``stats`` with per-request counts. Uses ``self.token_counter`` (an exact tokenizer, e.g.
+        tiktoken) when configured; otherwise falls back to the chars/4 heuristic (an estimate,
+        not billing -- see ``stats()``)."""
+        before_text, after_text = _payload_text(request), _payload_text(fwd)
+        self.est_chars_before += len(before_text)
+        self.est_chars_after += len(after_text)
         if stats.get("compressed"):
             self.compressed_requests += 1
-        stats["est_tokens_before"] = before // 4
-        stats["est_tokens_after"] = after // 4
+        if self.token_counter is not None:
+            tb, ta = self.token_counter(before_text), self.token_counter(after_text)
+            self.est_tokens_before += tb
+            self.est_tokens_after += ta
+        else:
+            tb, ta = len(before_text) // 4, len(after_text) // 4
+        stats["est_tokens_before"] = tb
+        stats["est_tokens_after"] = ta
+        stats["est_tokens_exact"] = self.token_counter is not None
         return stats
 
     def stats(self) -> dict:
-        tb, ta = self.est_chars_before // 4, self.est_chars_after // 4
+        exact = self.token_counter is not None
+        tb, ta = ((self.est_tokens_before, self.est_tokens_after) if exact
+                  else (self.est_chars_before // 4, self.est_chars_after // 4))
         saved = max(tb - ta, 0)
         return {
             "requests": self.requests,
@@ -424,6 +443,7 @@ class FoveanceProxy:
             "est_tokens_before": tb,
             "est_tokens_after": ta,
             "est_tokens_saved": saved,
+            "est_tokens_exact": exact,
             "est_saved_pct": round(100.0 * saved / tb, 1) if tb else 0.0,
             "price_per_mtok": self.price_per_mtok,
             "est_usd_saved": round(saved * self.price_per_mtok / 1e6, 4),
@@ -547,8 +567,8 @@ def build_app(proxy: Optional[FoveanceProxy] = None,
 
 
 # Self-contained live dashboard served at / and /admin: polls /admin/stats and shows the running
-# tokens-saved estimate (chars/4) and its $-equivalent at the configured input price. No external
-# assets, no build step, no tracking -- one HTML string.
+# tokens-saved estimate (chars/4, or exact via --exact-tokens) and its $-equivalent at the
+# configured input price. No external assets, no build step, no tracking -- one HTML string.
 _DASHBOARD_HTML = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Foveance proxy</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -583,9 +603,9 @@ _DASHBOARD_HTML = """<!doctype html>
   <div class="card"><div class="k">tokens in &rarr; out</div><div class="v" id="io">&ndash;</div></div>
   <div class="card"><div class="k">saved</div><div class="v" id="pct">&ndash;</div></div>
 </div>
-<div class="foot">Estimates use chars/4 &asymp; tokens on the request payload; the $ figure uses the
-configured <code>--price-per-mtok</code>. Exact token counts come from your provider's usage
-fields. JSON at <a href="/admin/stats" style="color:var(--indigo)">/admin/stats</a>.</div>
+<div class="foot"><span id="footNote">Estimates use chars/4 &asymp; tokens on the request payload</span>;
+the $ figure uses the configured <code>--price-per-mtok</code>. JSON at
+<a href="/admin/stats" style="color:var(--indigo)">/admin/stats</a>.</div>
 </main><script>
 const f = n => n >= 1e6 ? (n/1e6).toFixed(2)+"M" : n >= 1e3 ? (n/1e3).toFixed(1)+"k" : String(n);
 async function tick(){
@@ -598,6 +618,9 @@ async function tick(){
     document.getElementById("cmp").textContent = s.compressed_requests;
     document.getElementById("io").textContent = f(s.est_tokens_before)+" \\u2192 "+f(s.est_tokens_after);
     document.getElementById("pct").textContent = s.est_saved_pct + "%";
+    document.getElementById("footNote").textContent = s.est_tokens_exact
+      ? "Token counts use a real tokenizer (tiktoken) on the request payload"
+      : "Estimates use chars/4 \\u2248 tokens on the request payload";
   } catch (e) {}
 }
 tick(); setInterval(tick, 2000);
