@@ -171,6 +171,14 @@ def test_learned_fit_empty_is_noop():
     assert m.weights == before
 
 
+def test_learned_fit_without_numpy_raises_helpful_error(monkeypatch):
+    from foveance.learned import LogisticFutureRelevance
+    monkeypatch.setitem(sys.modules, "numpy", None)
+    m = LogisticFutureRelevance()
+    with pytest.raises(ImportError, match=r'foveance\[ml\]'):
+        m.fit([[1.0]], [1.0])
+
+
 # ---------------------------------------------------------------------------------- proxy
 def test_proxy_transparently_compresses_request():
     from foveance.proxy import FoveanceProxy

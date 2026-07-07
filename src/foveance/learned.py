@@ -64,7 +64,13 @@ class LogisticFutureRelevance:
         l2: float = 1e-4,
     ) -> "LogisticFutureRelevance":
         """Full-batch gradient descent on log loss with L2. Pure numpy."""
-        import numpy as np
+        try:
+            import numpy as np
+        except ImportError as e:
+            raise ImportError(
+                "LogisticFutureRelevance.fit() needs numpy, which isn't installed. "
+                'Install it with `pip install "foveance[ml]"` (or the `bench`/`all` extra).'
+            ) from e
 
         Xa = np.asarray(X, float)
         ya = np.asarray(y, float)
