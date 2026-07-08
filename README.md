@@ -276,5 +276,12 @@ bash scripts/run_offline_demo.sh     # no GPU: identical chain with a determinis
 Outputs land in `bench/report.md`, `bench/results/`, and `bench/plots/`. No number is
 hand-entered; every figure traces to a CSV.
 
+## Foveance Cloud (coming soon)
+The package you're looking at is free forever. **Foveance Cloud** adds a hosted gateway and a
+persistent team dashboard of dollars saved — priced off the same savings number the proxy already
+measures, so if it doesn't save you money it doesn't cost you money.
+**[See plans & join the waitlist →](https://aimaghsoodi.github.io/foveance/cloud/)** (founding
+users lock in early pricing).
+
 ## License
 Apache-2.0. See [`LICENSE`](LICENSE).
