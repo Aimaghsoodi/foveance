@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format is based on
 ### Added
 - `foveance.integrations.llamaindex` (a `shrink_chat_messages` wrapper), completing the framework
   integration matrix started in 0.1.3 (#5).
+- `--token-encoding` / `FOVEANCE_TOKEN_ENCODING` for `foveance proxy`/`wrap`: picks the tiktoken
+  encoding used by `--exact-tokens` (default stays `cl100k_base` for back-compat; pass
+  `o200k_base` for gpt-4o and newer so exact-token accounting matches the model you're actually
+  routing to).
 
 ## [0.1.3] - 2026-07-07
 ### Added

@@ -138,7 +138,9 @@ def _proxy_from_args(args: argparse.Namespace):
     token_counter = None
     if args.exact_tokens:
         from .metrics import make_token_counter
-        token_counter = make_token_counter()
+        encoding = setting(args.token_encoding, "FOVEANCE_TOKEN_ENCODING", "token_encoding",
+                           "cl100k_base", str)
+        token_counter = make_token_counter(encoding)
     proxy = FoveanceProxy(budget=budget, drift=drift, policy=policy, agentic_protect_last=protect,
                           cache_aware=args.cache_aware, price_per_mtok=args.price_per_mtok,
                           token_counter=token_counter)
@@ -293,6 +295,9 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--exact-tokens", action="store_true",
                     help="count tokens with a real tokenizer (tiktoken, if installed) instead "
                          "of the chars/4 heuristic, for accounting and the dashboard")
+    pr.add_argument("--token-encoding", default=None,
+                    help="tiktoken encoding for --exact-tokens, e.g. o200k_base for gpt-4o+ "
+                         "(env: FOVEANCE_TOKEN_ENCODING, default: cl100k_base)")
     pr.set_defaults(func=cmd_proxy)
 
     w = sub.add_parser("wrap", help="run any CLI/agent through the proxy (one command); "
@@ -314,6 +319,9 @@ def build_parser() -> argparse.ArgumentParser:
     w.add_argument("--exact-tokens", action="store_true",
                    help="count tokens with a real tokenizer (tiktoken, if installed) instead "
                         "of the chars/4 heuristic, for accounting and the exit summary")
+    w.add_argument("--token-encoding", default=None,
+                   help="tiktoken encoding for --exact-tokens, e.g. o200k_base for gpt-4o+ "
+                        "(env: FOVEANCE_TOKEN_ENCODING, default: cl100k_base)")
     w.add_argument("command", nargs=argparse.REMAINDER,
                    help="the tool to launch, e.g.: claude   or:  -- codex 'fix the tests'")
     w.set_defaults(func=cmd_wrap)

@@ -302,7 +302,7 @@ def _proxy_args(**overrides):
     import argparse
     base = dict(upstream=None, budget=None, drift=None, policy=None,
                 agentic_protect_last=None, cache_aware=False, price_per_mtok=3.0,
-                exact_tokens=False)
+                exact_tokens=False, token_encoding=None)
     base.update(overrides)
     return argparse.Namespace(**base)
 
@@ -379,6 +379,47 @@ def test_cli_no_exact_tokens_flag_leaves_counter_unset():
 
 def test_cli_exact_tokens_flag_wires_a_token_counter():
     from foveance.cli import _proxy_from_args
+    proxy, _ = _proxy_from_args(_proxy_args(exact_tokens=True))
+    assert proxy.token_counter is not None
+    assert proxy.token_counter("hello world") > 0
+
+
+def test_cli_exact_tokens_defaults_to_cl100k_base(monkeypatch):
+    import foveance.cli as cli
+    import foveance.metrics as metrics_mod
+
+    seen = {}
+    real = metrics_mod.make_token_counter
+
+    def spy(encoding="cl100k_base"):
+        seen["encoding"] = encoding
+        return real(encoding)
+
+    monkeypatch.setattr(metrics_mod, "make_token_counter", spy)
+    proxy, _ = cli._proxy_from_args(_proxy_args(exact_tokens=True))
+    assert seen["encoding"] == "cl100k_base"
+    assert proxy.token_counter is not None
+
+
+def test_cli_token_encoding_flag_overrides_default(monkeypatch):
+    import foveance.cli as cli
+    import foveance.metrics as metrics_mod
+
+    seen = {}
+    real = metrics_mod.make_token_counter
+
+    def spy(encoding="cl100k_base"):
+        seen["encoding"] = encoding
+        return real(encoding)
+
+    monkeypatch.setattr(metrics_mod, "make_token_counter", spy)
+    cli._proxy_from_args(_proxy_args(exact_tokens=True, token_encoding="o200k_base"))
+    assert seen["encoding"] == "o200k_base"
+
+
+def test_cli_token_encoding_env_var(monkeypatch):
+    from foveance.cli import _proxy_from_args
+    monkeypatch.setenv("FOVEANCE_TOKEN_ENCODING", "o200k_base")
     proxy, _ = _proxy_from_args(_proxy_args(exact_tokens=True))
     assert proxy.token_counter is not None
     assert proxy.token_counter("hello world") > 0
