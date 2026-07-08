@@ -102,3 +102,36 @@ def test_langchain_shrink_messages_passes_through_unsupported_message_types():
     messages = [HumanMessage(content="hi"), ToolMessage(content="42", tool_call_id="t1")]
     chain = shrink_messages(budget=50)
     assert chain.invoke(messages) == messages
+
+
+# --------------------------------------------------------------------------------- llamaindex
+def test_llamaindex_shrink_chat_messages_compresses_and_preserves_last_turn():
+    pytest.importorskip("llama_index.core")
+    from llama_index.core.llms import ChatMessage, MessageRole
+
+    from foveance.integrations.llamaindex import shrink_chat_messages
+
+    long_ctx = "FACT secret=42\n" + "\n".join(f"log {i} ok" for i in range(200))
+    messages = [
+        ChatMessage(role=MessageRole.SYSTEM, content="You are helpful."),
+        ChatMessage(role=MessageRole.USER, content=long_ctx),
+        ChatMessage(role=MessageRole.ASSISTANT, content="noted"),
+        ChatMessage(role=MessageRole.USER, content="recall secret"),
+    ]
+    out = shrink_chat_messages(messages, budget=120)
+    assert out[-1].role == MessageRole.USER
+    assert out[-1].content == "recall secret"
+    assert sum(len(m.content or "") for m in out) < sum(len(m.content or "") for m in messages)
+
+
+def test_llamaindex_shrink_chat_messages_passes_through_unsupported_roles():
+    pytest.importorskip("llama_index.core")
+    from llama_index.core.llms import ChatMessage, MessageRole
+
+    from foveance.integrations.llamaindex import shrink_chat_messages
+
+    messages = [
+        ChatMessage(role=MessageRole.USER, content="hi"),
+        ChatMessage(role=MessageRole.TOOL, content="42"),
+    ]
+    assert shrink_chat_messages(messages, budget=50) == messages
