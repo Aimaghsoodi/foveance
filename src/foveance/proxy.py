@@ -194,6 +194,9 @@ class FoveanceProxy:
     est_chars_after: int = 0
     est_tokens_before: int = 0
     est_tokens_after: int = 0
+    # Pro feature: when set (a foveance.license.SavingsLog), per-request savings are persisted so
+    # totals survive restarts; the dashboard then shows all-time and per-day history.
+    savings_log: Optional[object] = None
 
     def _state(self, conv_id: str) -> _ConvState:
         if conv_id not in self.convs:
@@ -429,6 +432,11 @@ class FoveanceProxy:
         stats["est_tokens_before"] = tb
         stats["est_tokens_after"] = ta
         stats["est_tokens_exact"] = self.token_counter is not None
+        if self.savings_log is not None:
+            try:
+                self.savings_log.record(tb, ta)  # type: ignore[attr-defined]
+            except Exception:
+                pass  # persistence must never break request handling
         return stats
 
     def stats(self) -> dict:
@@ -436,7 +444,7 @@ class FoveanceProxy:
         tb, ta = ((self.est_tokens_before, self.est_tokens_after) if exact
                   else (self.est_chars_before // 4, self.est_chars_after // 4))
         saved = max(tb - ta, 0)
-        return {
+        out: dict = {
             "requests": self.requests,
             "compressed_requests": self.compressed_requests,
             "conversations": len(self.convs),
@@ -450,6 +458,14 @@ class FoveanceProxy:
             "per_conv": {cid: {"items": len(s.store.order), "turns": s.turn}
                          for cid, s in self.convs.items()},
         }
+        if self.savings_log is not None:
+            try:
+                t = self.savings_log.totals()  # type: ignore[attr-defined]
+                out["alltime"] = {**t, "usd_saved": round(
+                    t["tokens_saved"] * self.price_per_mtok / 1e6, 4)}
+            except Exception:
+                pass
+        return out
 
 
 def build_app(proxy: Optional[FoveanceProxy] = None,
@@ -558,6 +574,17 @@ def build_app(proxy: Optional[FoveanceProxy] = None,
     async def admin_stats():  # pragma: no cover - needs server
         return px.stats()
 
+    @app.get("/admin/export.csv")
+    async def export_csv():  # pragma: no cover - needs server
+        if px.savings_log is None:
+            return Response(content="Foveance Pro feature: persistent history export requires an "
+                                    "active license (foveance license activate <key>).\n",
+                            status_code=402, media_type="text/plain")
+        return Response(content=px.savings_log.export_csv(),  # type: ignore[attr-defined]
+                        media_type="text/csv",
+                        headers={"Content-Disposition":
+                                 "attachment; filename=foveance-savings.csv"})
+
     @app.get("/")
     @app.get("/admin")
     async def dashboard():  # pragma: no cover - needs server
@@ -602,6 +629,10 @@ _DASHBOARD_HTML = """<!doctype html>
   <div class="card"><div class="k">compressed</div><div class="v" id="cmp">&ndash;</div></div>
   <div class="card"><div class="k">tokens in &rarr; out</div><div class="v" id="io">&ndash;</div></div>
   <div class="card"><div class="k">saved</div><div class="v" id="pct">&ndash;</div></div>
+  <div class="card" id="proCard" style="display:none;grid-column:1/-1">
+    <div class="k">all-time saved (pro) &middot; <a href="/admin/export.csv"
+      style="color:var(--indigo)">export csv</a></div>
+    <div class="v" id="alltime">&ndash;</div></div>
 </div>
 <div class="foot"><span id="footNote">Estimates use chars/4 &asymp; tokens on the request payload</span>;
 the $ figure uses the configured <code>--price-per-mtok</code>. JSON at
@@ -621,6 +652,11 @@ async function tick(){
     document.getElementById("footNote").textContent = s.est_tokens_exact
       ? "Token counts use a real tokenizer (tiktoken) on the request payload"
       : "Estimates use chars/4 \\u2248 tokens on the request payload";
+    if (s.alltime) {
+      document.getElementById("proCard").style.display = "block";
+      document.getElementById("alltime").textContent =
+        f(s.alltime.tokens_saved) + " tokens  \\u2248 $" + s.alltime.usd_saved.toFixed(2);
+    }
   } catch (e) {}
 }
 tick(); setInterval(tick, 2000);

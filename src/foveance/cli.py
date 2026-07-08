@@ -141,10 +141,45 @@ def _proxy_from_args(args: argparse.Namespace):
         encoding = setting(args.token_encoding, "FOVEANCE_TOKEN_ENCODING", "token_encoding",
                            "cl100k_base", str)
         token_counter = make_token_counter(encoding)
+    # Pro: with an active license, savings persist across restarts (all-time dashboard + CSV).
+    savings_log = None
+    from . import license as _license
+    if _license.current() is not None:
+        savings_log = _license.SavingsLog()
     proxy = FoveanceProxy(budget=budget, drift=drift, policy=policy, agentic_protect_last=protect,
                           cache_aware=args.cache_aware, price_per_mtok=args.price_per_mtok,
-                          token_counter=token_counter)
+                          token_counter=token_counter, savings_log=savings_log)
     return proxy, upstream
+
+
+def cmd_license(args: argparse.Namespace) -> int:
+    """Activate, inspect, or remove a Foveance Pro license (verified offline)."""
+    from . import license as _license
+
+    if args.action == "activate":
+        if not args.key:
+            print("usage: foveance license activate FOV1-...", file=sys.stderr)
+            return 2
+        data = _license.activate(args.key)
+        if data is None:
+            print("Invalid license key.", file=sys.stderr)
+            return 1
+        print(f"Foveance Pro activated for {data.get('email')} (plan: {data.get('plan')}).")
+        print("Persistent savings history is now on for `foveance proxy` and `foveance wrap`.")
+        return 0
+    if args.action == "deactivate":
+        print("License removed." if _license.deactivate() else "No license was active.")
+        return 0
+    data = _license.current()
+    if data is None:
+        print("No active license. The package is fully functional; Pro adds persistent "
+              "savings history and CSV export.")
+    else:
+        print(f"Foveance Pro active: {data.get('email')} (plan: {data.get('plan')}).")
+        totals = _license.SavingsLog().totals()
+        print(f"All-time recorded: {totals['tokens_saved']:,} tokens saved "
+              f"across {totals['requests']:,} requests.")
+    return 0
 
 
 def cmd_proxy(args: argparse.Namespace) -> int:
@@ -325,6 +360,12 @@ def build_parser() -> argparse.ArgumentParser:
     w.add_argument("command", nargs=argparse.REMAINDER,
                    help="the tool to launch, e.g.: claude   or:  -- codex 'fix the tests'")
     w.set_defaults(func=cmd_wrap)
+
+    lic = sub.add_parser("license", help="activate/status/deactivate a Foveance Pro license")
+    lic.add_argument("action", nargs="?", default="status",
+                     choices=["activate", "status", "deactivate"])
+    lic.add_argument("key", nargs="?", default=None, help="license key (for activate)")
+    lic.set_defaults(func=cmd_license)
 
     b = sub.add_parser("bench", help="run the benchmark harness (forwards extra args)")
     b.set_defaults(func=None)
