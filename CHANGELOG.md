@@ -13,6 +13,31 @@ All notable changes to this project are documented here. The format is based on
   `o200k_base` for gpt-4o and newer so exact-token accounting matches the model you're actually
   routing to).
 
+## [0.3.0] - Unreleased (the interactive-compression release)
+### Added
+- **Anticipatory agentic compression** (`--agentic-allocator`): old tool-transcript payloads get
+  graded fidelities (full/digest/gist/pointer) from the same anticipatory allocator plain chat
+  uses, instead of blind digestion. Structure (tool pairing, cache breakpoints, protected recent
+  turns) is preserved by construction.
+- **Model-driven re-inflation** (`--expand-tool`): compressed items carry addressable markers and
+  the model can retrieve any of them via a `foveance_expand` tool the proxy resolves
+  transparently against a durable vault -- compression becomes lossless in effect
+  (non-streaming requests; bounded loop).
+- **Durable item vault** (`~/.foveance/vault.db`): full texts survive restarts, so
+  "nothing is deleted forever" now holds across sessions.
+- **`foveance audit LOGFILE`**: replay your own conversation logs offline and get a
+  tokens/$-saved report with monthly extrapolation. Nothing leaves the machine.
+- **The learning loop** (`--learn` + `foveance train`): local trace logging of which items each
+  query referenced; training calibrates the future-relevance model on YOUR workload, and the
+  proxy uses it automatically.
+- **Salience-aware digestion**: digests keep query-relevant lines instead of blind head/tail.
+- **Replay benchmark** (`bench/replay_bench.py`): raw vs digest vs allocator on recorded traces.
+- `--admin-token` auth for /admin endpoints; stats now report evictions/expansions/vault size.
+
+### Fixed
+- Long-running proxies no longer grow without bound: conversation state is LRU+TTL evicted
+  (`max_convs`, `conv_ttl_s`), with full texts still recoverable via the vault.
+
 ## [0.1.3] - 2026-07-07
 ### Added
 - `foveance.shrink_anthropic(system, messages, budget)` — the Anthropic-shaped one-liner,

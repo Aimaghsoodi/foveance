@@ -13,11 +13,12 @@ against a local echo upstream. ``build_app`` wires the same core into FastAPI (`
 from __future__ import annotations
 
 import hashlib
+import time
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 from .store import MultiFidelityStore, Item, default_renderer, Renderer
-from .predictor import AnticipatoryPredictor, PredictorConfig
+from .predictor import AnticipatoryPredictor, FutureRelevancePredictor, PredictorConfig
 from .embedders import HashingEmbedder
 from . import baselines
 
@@ -29,6 +30,7 @@ class _ConvState:
     turn: int = 0
     seen: int = 0          # number of prior messages already ingested as items
     reinflations: int = 0
+    last_used: float = field(default_factory=time.time)
 
 
 def _is_structured(messages: list[dict]) -> bool:
@@ -72,19 +74,53 @@ def _extract_text(content) -> str:
     return str(content or "")
 
 
-def _digest_text(text: str, head: int = 12, tail: int = 6, max_chars: int = 700) -> str:
-    """Shrink an oversized text payload (e.g. a long tool output) while keeping its head and tail and
-    marking what was removed. Returns the input unchanged if it is already small or cannot shrink.
-    This is lossy but reversible in spirit: the elision marker tells the model context was trimmed."""
+def _terms(text: str) -> set:
+    """Salient lowercase tokens of a query (>=3 chars), for salience-aware digestion."""
+    import re
+
+    return {w.lower() for w in re.findall(r"[A-Za-z0-9_\-\.]{3,}", text or "")[:64]}
+
+
+def _digest_text(text: str, head: int = 12, tail: int = 6, max_chars: int = 700,
+                 query_terms: Optional[set] = None) -> str:
+    """Shrink an oversized text payload (e.g. a long tool output), keeping its head and tail and
+    marking what was removed. When ``query_terms`` is given, lines overlapping the current query
+    are additionally kept in place (salience-aware digestion), so the one line that matters is
+    not blindly elided. Returns the input unchanged if already small or if shrinking would not
+    help. Lossy but reversible in spirit: elision markers tell the model context was trimmed."""
     if not isinstance(text, str) or len(text) <= max_chars:
         return text
     lines = text.splitlines()
     if len(lines) >= head + tail + 4:
+        if query_terms:
+            scored = []
+            for i in range(head, len(lines) - tail):
+                low = lines[i].lower()
+                overlap = sum(1 for t in query_terms if t in low)
+                if overlap:
+                    scored.append((overlap, -i))
+            keep = {-neg_i for _, neg_i in sorted(scored, reverse=True)[:8]}
+            out_lines: list[str] = []
+            elided = 0
+            for i, ln in enumerate(lines):
+                if i < head or i >= len(lines) - tail or i in keep:
+                    if elided:
+                        out_lines.append(f"[... {elided} lines elided by Foveance ...]")
+                        elided = 0
+                    out_lines.append(ln)
+                else:
+                    elided += 1
+            if elided:
+                out_lines.append(f"[... {elided} lines elided by Foveance ...]")
+            out = "\n".join(out_lines)
+            if len(out) < len(text):
+                return out
+            # salience kept too much -- fall through to the plain head/tail digest
         elided = len(lines) - head - tail
         out = "\n".join(lines[:head] + [f"[... {elided} lines elided by Foveance ...]"] + lines[-tail:])
         return out if len(out) < len(text) else text
-    keep = max_chars // 2
-    h, t = text[:keep], text[-(max_chars // 4):]
+    keep_c = max_chars // 2
+    h, t = text[:keep_c], text[-(max_chars // 4):]
     out = f"{h}\n[... {len(text) - len(h) - len(t)} chars elided by Foveance ...]\n{t}"
     return out if len(out) < len(text) else text
 
@@ -109,7 +145,7 @@ def _payload_chars(request: dict) -> int:
     return len(_payload_text(request))
 
 
-def _digest_block(blk):
+def _digest_block(blk, query_terms: Optional[set] = None):
     """Digest the text payload of a content block in place, preserving its type and ids (so
     Anthropic tool_use<->tool_result pairing stays valid). Blocks carrying a ``cache_control``
     breakpoint are never modified (touching one invalidates the provider's prompt cache).
@@ -120,15 +156,15 @@ def _digest_block(blk):
         return blk
     t = blk.get("type")
     if t == "text" and isinstance(blk.get("text"), str):
-        nd = _digest_text(blk["text"])
+        nd = _digest_text(blk["text"], query_terms=query_terms)
         return blk if nd == blk["text"] else {**blk, "text": nd}
     if t == "tool_result":
         c = blk.get("content")
         if isinstance(c, str):
-            nd = _digest_text(c)
+            nd = _digest_text(c, query_terms=query_terms)
             return blk if nd == c else {**blk, "content": nd}
         if isinstance(c, list):
-            nc = [_digest_block(b) for b in c]
+            nc = [_digest_block(b, query_terms) for b in c]
             return blk if nc == c else {**blk, "content": nc}
     return blk
 
@@ -161,6 +197,20 @@ def _digest_responses_item(item):
                 nc.append(part)
             return {**item, "content": nc} if changed else item
     return item
+
+
+_EXPAND_DESC = ("Retrieve the full original content of a context item that Foveance compressed. "
+                "Use this when a marker like [Foveance compressed item <id> ...] hides "
+                "information you need to answer correctly.")
+_EXPAND_SCHEMA = {"type": "object",
+                  "properties": {"item_id": {"type": "string",
+                                             "description": "the item id from the marker"}},
+                  "required": ["item_id"]}
+_EXPAND_TOOL_ANTHROPIC = {"name": "foveance_expand", "description": _EXPAND_DESC,
+                          "input_schema": _EXPAND_SCHEMA}
+_EXPAND_TOOL_OPENAI = {"type": "function",
+                       "function": {"name": "foveance_expand", "description": _EXPAND_DESC,
+                                    "parameters": _EXPAND_SCHEMA}}
 
 
 @dataclass
@@ -197,15 +247,54 @@ class FoveanceProxy:
     # Pro feature: when set (a foveance.license.SavingsLog), per-request savings are persisted so
     # totals survive restarts; the dashboard then shows all-time and per-day history.
     savings_log: Optional[object] = None
+    # Durable full-text spill (foveance.vault.ItemVault): re-inflation survives restarts and the
+    # foveance_expand tool can retrieve any compressed item. Set by the CLI; None disables.
+    vault: Optional[object] = None
+    # Conversation-state eviction: without this a long-running proxy grows without bound. LRU
+    # beyond max_convs, plus a TTL for idle conversations. Evicted state can still be re-inflated
+    # via the vault; in-memory eviction only forgets the working set.
+    max_convs: int = 256
+    conv_ttl_s: float = 6 * 3600.0
+    evictions: int = 0
+    # R1: anticipatory agentic compression -- old tool-transcript payloads get graded fidelities
+    # from the same allocator plain chat uses (instead of blind digestion). Opt-in while it
+    # matures; digestion remains the default behaviour.
+    agentic_allocator: bool = False
+    # R1: expose a foveance_expand tool so the MODEL can re-inflate any compressed item; the
+    # server resolves those calls transparently (non-streaming requests only). Requires vault.
+    expand_tool: bool = False
+    expansions: int = 0
+    # R3: the learning loop. trace_log (foveance.traces.TraceLogger) records which items each
+    # query referenced; future_model (a trained LogisticFutureRelevance) replaces the heuristic
+    # posterior when present, so allocation improves on the user's own workload over time.
+    trace_log: Optional[object] = None
+    future_model: Optional[FutureRelevancePredictor] = None
+
+    def _evict(self) -> None:
+        now = time.time()
+        expired = [cid for cid, st in self.convs.items()
+                   if now - st.last_used > self.conv_ttl_s]
+        for cid in expired:
+            del self.convs[cid]
+        self.evictions += len(expired)
+        # called before inserting a new conversation: make room so the cap holds post-insert
+        while len(self.convs) >= self.max_convs:
+            oldest = min(self.convs, key=lambda cid: self.convs[cid].last_used)
+            del self.convs[oldest]
+            self.evictions += 1
 
     def _state(self, conv_id: str) -> _ConvState:
         if conv_id not in self.convs:
+            self._evict()
             store = MultiFidelityStore(self.renderer, self.token_counter)
             cfg = PredictorConfig(drift=(0.0 if self.policy in ("reactive", "reactive_afm")
                                          else self.drift))
-            pred = AnticipatoryPredictor(store, HashingEmbedder(), config=cfg)
+            pred = AnticipatoryPredictor(store, HashingEmbedder(), config=cfg,
+                                         future_model=self.future_model)
             self.convs[conv_id] = _ConvState(store=store, pred=pred)
-        return self.convs[conv_id]
+        st = self.convs[conv_id]
+        st.last_used = time.time()
+        return st
 
     def _ingest_and_allocate(self, history: list[dict], last_text: str, conv_id: str):
         """Shared core: ingest newly-seen history, score the next need, allocate, assemble."""
@@ -216,6 +305,12 @@ class FoveanceProxy:
                               full_text=_extract_text(m.get("content", "")), created_turn=st.turn))
         st.seen = len(history)
         st.pred.observe_query(last_text)
+        if self.trace_log is not None:
+            try:
+                self.trace_log.log_event(  # type: ignore[attr-defined]
+                    conv_id, st.turn, last_text, st.store.items.values())
+            except Exception:
+                pass
         fn = baselines.POLICIES.get(self.policy, baselines.foveance)
         levels = fn(st.store, st.pred, self.budget, st.turn)
         ctx, ntok = st.store.assemble(levels, system=self.system_prefix)
@@ -264,11 +359,81 @@ class FoveanceProxy:
                  "context_tokens": ntok, "budget": self.budget, "turn": st.turn}
         return new_system, [last], stats
 
-    def _compress_agentic_anthropic(self, messages: list[dict]) -> list[dict]:
+    # ------------------------------------------------------------------ agentic compression
+    def _agentic_levels(self, conv_id: str, candidates: list, last_text: str) -> dict:
+        """R1 core: score every compressible old item by *predicted future relevance* and allocate
+        graded fidelities under the budget (the same anticipatory machinery plain chat uses).
+        ``candidates`` is a list of (item_id, kind, full_text). Full texts are spilled to the
+        vault so the foveance_expand tool (and future sessions) can re-inflate any of them."""
+        from .store import Item
+
+        st = self._state(conv_id)
+        for iid, kind, text in candidates:
+            if iid not in st.store.order:
+                st.store.add(Item(item_id=iid, kind=kind, full_text=text, created_turn=st.turn))
+            if self.vault is not None:
+                try:
+                    self.vault.put(conv_id, iid, kind, text)  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+        st.pred.observe_query(last_text)
+        if self.trace_log is not None:
+            try:
+                self.trace_log.log_event(  # type: ignore[attr-defined]
+                    conv_id, st.turn, last_text, st.store.items.values())
+            except Exception:
+                pass  # learning must never break request handling
+        fn = baselines.POLICIES.get(self.policy, baselines.foveance)
+        levels = fn(st.store, st.pred, self.budget, st.turn)
+        st.turn += 1
+        return levels
+
+    def _render_level(self, text: str, kind: str, iid: str, level, qt: Optional[set]) -> str:
+        """Render an item at its allocated fidelity, with a marker that names the item so the
+        model can ask for it back (via foveance_expand when enabled)."""
+        from .store import Fidelity
+
+        hint = (" Use the foveance_expand tool to retrieve it." if self.expand_tool else "")
+        note = f"\n[Foveance compressed item {iid} ({kind}, {len(text)} chars).{hint}]"
+        if level == Fidelity.FULL:
+            return text
+        if level == Fidelity.DIGEST:
+            return _digest_text(text, query_terms=qt) + note
+        if level == Fidelity.GIST:
+            head = "\n".join(text.splitlines()[:3])[:240]
+            return head + "\n[...]" + note
+        return f"[Foveance item {iid} ({kind}, {len(text)} chars) elided.{hint}]"
+
+    def _alloc_or_digest(self, text: str, kind: str, conv_id: str, qt: Optional[set],
+                         levels: Optional[dict]) -> str:
+        """Compress one payload: by allocated fidelity when the allocator ran, else salience
+        digestion (the pre-R1 behaviour)."""
+        if levels is not None:
+            from .vault import item_id_for
+            iid = item_id_for(conv_id, text)
+            if iid in levels:
+                return self._render_level(text, kind, iid, levels[iid], qt)
+        return _digest_text(text, query_terms=qt)
+
+    def _collect_candidates(self, conv_id: str, payloads: list) -> Optional[dict]:
+        """When the anticipatory agentic allocator is on, register (item_id, kind, text) payloads
+        and return their fidelity allocation; otherwise None (digestion path)."""
+        if not self.agentic_allocator:
+            return None
+        found, last_text = payloads
+        if not found:
+            return None
+        from .vault import item_id_for
+        cands = [(item_id_for(conv_id, text), kind, text) for kind, text in found]
+        return self._agentic_levels(conv_id, cands, last_text)
+
+    def _compress_agentic_anthropic(self, messages: list[dict],
+                                    conv_id: str = "agentic") -> list[dict]:
         """Structure-preserving compression for Anthropic tool-use requests: keep every message,
         role, and tool_use/tool_result id intact; protect the last ``agentic_protect_last`` turns;
-        digest only large content blocks in older turns. The result is always a valid Messages
-        request, so agents like Claude Code keep working while large stale tool output is trimmed.
+        compress only large content payloads in older turns. With ``agentic_allocator=True`` the
+        payloads get graded fidelities from the anticipatory allocator (and are vaulted for
+        re-inflation); otherwise they are salience-digested in place.
 
         With ``cache_aware=True``, messages at or before the last explicit ``cache_control``
         breakpoint are additionally left byte-identical, so the provider's prompt-cache prefix is
@@ -282,47 +447,134 @@ class FoveanceProxy:
                 if isinstance(c, list) and any(isinstance(b, dict) and b.get("cache_control")
                                                for b in c):
                     start = i + 1
+        qt = _terms(_extract_text(messages[-1].get("content", ""))) if messages else None
+
+        def _payloads():
+            found = []
+            for i in range(start, cut):
+                c = messages[i].get("content")
+                if isinstance(c, str) and len(c) > self.agentic_min_chars:
+                    found.append((messages[i].get("role", "message"), c))
+                elif isinstance(c, list):
+                    for b in c:
+                        if not isinstance(b, dict) or b.get("cache_control"):
+                            continue
+                        if b.get("type") == "text" and isinstance(b.get("text"), str) \
+                                and len(b["text"]) > self.agentic_min_chars:
+                            found.append(("text", b["text"]))
+                        elif b.get("type") == "tool_result" and isinstance(b.get("content"), str) \
+                                and len(b["content"]) > self.agentic_min_chars:
+                            found.append(("tool_output", b["content"]))
+            return found
+
+        levels = self._collect_candidates(
+            conv_id, [_payloads(), _extract_text(messages[-1].get("content", ""))]
+        ) if messages else None
+
+        def _blk(b):
+            if not isinstance(b, dict) or b.get("cache_control"):
+                return b
+            if b.get("type") == "text" and isinstance(b.get("text"), str) \
+                    and len(b["text"]) > self.agentic_min_chars:
+                nd = self._alloc_or_digest(b["text"], "text", conv_id, qt, levels)
+                return b if nd == b["text"] else {**b, "text": nd}
+            if b.get("type") == "tool_result" and isinstance(b.get("content"), str) \
+                    and len(b["content"]) > self.agentic_min_chars:
+                nd = self._alloc_or_digest(b["content"], "tool_output", conv_id, qt, levels)
+                return b if nd == b["content"] else {**b, "content": nd}
+            return _digest_block(b, qt)
+
         out = []
         for i, m in enumerate(messages):
             c = m.get("content")
             if i >= cut or i < start:
                 out.append(m)
             elif isinstance(c, str):
-                nd = _digest_text(c)
+                nd = (self._alloc_or_digest(c, m.get("role", "message"), conv_id, qt, levels)
+                      if len(c) > self.agentic_min_chars else c)
                 out.append(m if nd == c else {**m, "content": nd})
             elif isinstance(c, list):
-                nc = [_digest_block(b) for b in c]
+                nc = [_blk(b) for b in c]
                 out.append(m if nc == c else {**m, "content": nc})
             else:
                 out.append(m)
         return out
 
-    def _compress_agentic_openai(self, messages: list[dict]) -> list[dict]:
+    def _compress_agentic_openai(self, messages: list[dict],
+                                 conv_id: str = "agentic") -> list[dict]:
         """Structure-preserving compression for OpenAI tool-use requests: protect recent turns and
-        system, keep tool_calls/tool_call_id pairing intact, and digest large old tool outputs
-        (role=tool) and oversized text content/blocks in place."""
+        system, keep tool_calls/tool_call_id pairing intact, and compress large old payloads
+        (allocator-graded when ``agentic_allocator=True``, salience-digested otherwise)."""
         cut = max(0, len(messages) - self.agentic_protect_last)
+        qt = _terms(_extract_text(messages[-1].get("content", ""))) if messages else None
+
+        def _payloads():
+            found = []
+            for i in range(cut):
+                m = messages[i]
+                c = m.get("content")
+                if m.get("role") == "system":
+                    continue
+                if isinstance(c, str) and (m.get("role") == "tool"
+                                           or len(c) > self.agentic_min_chars):
+                    kind = "tool_output" if m.get("role") == "tool" else m.get("role", "message")
+                    found.append((kind, c))
+            return found
+
+        levels = self._collect_candidates(
+            conv_id, [_payloads(), _extract_text(messages[-1].get("content", ""))]
+        ) if messages else None
+
         out = []
         for i, m in enumerate(messages):
             c = m.get("content")
             if i >= cut or m.get("role") == "system":
                 out.append(m)
             elif isinstance(c, str) and (m.get("role") == "tool" or len(c) > self.agentic_min_chars):
-                nd = _digest_text(c)
+                kind = "tool_output" if m.get("role") == "tool" else m.get("role", "message")
+                nd = self._alloc_or_digest(c, kind, conv_id, qt, levels)
                 out.append(m if nd == c else {**m, "content": nd})
             elif isinstance(c, list):
-                nc = [_digest_block(b) for b in c]
+                nc = [_digest_block(b, qt) for b in c]
                 out.append(m if nc == c else {**m, "content": nc})
             else:
                 out.append(m)
         return out
 
-    def _compress_agentic_responses(self, items: list[dict]) -> list[dict]:
+    def _compress_agentic_responses(self, items: list[dict],
+                                    conv_id: str = "agentic") -> list[dict]:
         """In-place compression for the OpenAI Responses API ``input`` list: protect the most recent
-        items and digest large old tool outputs / message text, keeping every item, type, role, and
-        ``call_id`` intact so the request stays valid (used by Codex and the OpenAI Agents SDK)."""
+        items and compress large old tool outputs / message text, keeping every item, type, role,
+        and ``call_id`` intact so the request stays valid (used by Codex and the Agents SDK)."""
         cut = max(0, len(items) - self.agentic_protect_last)
-        return [it if i >= cut else _digest_responses_item(it) for i, it in enumerate(items)]
+        last_text = ""
+        for it in reversed(items):
+            if isinstance(it, dict) and it.get("type") in (None, "message"):
+                last_text = _extract_text(it.get("content", ""))
+                if last_text:
+                    break
+        qt = _terms(last_text) if last_text else None
+
+        def _payloads():
+            found = []
+            for it in items[:cut]:
+                if isinstance(it, dict) and it.get("type") == "function_call_output" \
+                        and isinstance(it.get("output"), str) \
+                        and len(it["output"]) > self.agentic_min_chars:
+                    found.append(("tool_output", it["output"]))
+            return found
+
+        levels = self._collect_candidates(conv_id, [_payloads(), last_text]) if items else None
+
+        def _item(it):
+            if isinstance(it, dict) and it.get("type") == "function_call_output" \
+                    and isinstance(it.get("output"), str) \
+                    and len(it["output"]) > self.agentic_min_chars:
+                nd = self._alloc_or_digest(it["output"], "tool_output", conv_id, qt, levels)
+                return it if nd == it["output"] else {**it, "output": nd}
+            return _digest_responses_item(it)
+
+        return [it if i >= cut else _item(it) for i, it in enumerate(items)]
 
     def prepare_responses(self, request: dict) -> tuple[dict, dict]:
         """Compress an OpenAI Responses request (``input`` is a string or a list of items) and return
@@ -334,7 +586,7 @@ class FoveanceProxy:
             return fwd, self._account(request, fwd,
                                       {"compressed": False, "items": 0,
                                        "reason": "responses-passthrough"})
-        new = self._compress_agentic_responses(inp)
+        new = self._compress_agentic_responses(inp, conv_id="resp-agentic")
         fwd = dict(request)
         fwd["input"] = new
         return fwd, self._account(request, fwd, {"compressed": new != inp, "items": len(inp),
@@ -363,10 +615,13 @@ class FoveanceProxy:
         self.requests += 1
         msgs = list(request.get("messages", []))
         if _is_agentic(request, msgs):
-            new_messages = self._compress_agentic_openai(msgs)
+            conv_id = "ag-" + self._conv_id(request, msgs)
+            new_messages = self._compress_agentic_openai(msgs, conv_id=conv_id)
             fwd = dict(request)
             fwd["messages"] = new_messages
             fwd.pop("conversation_id", None)
+            if self.expand_tool and not request.get("stream"):
+                fwd["tools"] = list(request.get("tools") or []) + [_EXPAND_TOOL_OPENAI]
             return fwd, self._account(request, fwd,
                                       {"compressed": new_messages != msgs, "items": len(msgs),
                                        "reason": "agentic-inplace"})
@@ -382,9 +637,12 @@ class FoveanceProxy:
         self.requests += 1
         msgs = list(request.get("messages", []))
         if _is_agentic(request, msgs):
-            new_messages = self._compress_agentic_anthropic(msgs)
+            conv_id = "ag-" + self._conv_id(request, msgs)
+            new_messages = self._compress_agentic_anthropic(msgs, conv_id=conv_id)
             fwd = dict(request)
             fwd["messages"] = new_messages  # system left intact (preserves its cache_control)
+            if self.expand_tool and not request.get("stream"):
+                fwd["tools"] = list(request.get("tools") or []) + [_EXPAND_TOOL_ANTHROPIC]
             return fwd, self._account(request, fwd,
                                       {"compressed": new_messages != msgs, "items": len(msgs),
                                        "reason": "agentic-inplace"})
@@ -396,6 +654,67 @@ class FoveanceProxy:
             fwd["system"] = new_system
         fwd["messages"] = new_messages
         return fwd, self._account(request, fwd, stats)
+
+    # ------------------------------------------------------------ foveance_expand resolution
+    def _vault_lookup(self, item_id: str) -> str:
+        full = None
+        if self.vault is not None:
+            try:
+                full = self.vault.get_any(item_id)  # type: ignore[attr-defined]
+            except Exception:
+                full = None
+        if full is None:
+            return (f"[foveance: item {item_id} not found. It may have been pruned; "
+                    "answer from the visible context.]")
+        self.expansions += 1
+        return full
+
+    def expand_requested_anthropic(self, data: dict):
+        """(tool_use_id, item_id) when an Anthropic response calls foveance_expand, else None."""
+        if not isinstance(data, dict) or data.get("stop_reason") != "tool_use":
+            return None
+        for blk in data.get("content") or []:
+            if isinstance(blk, dict) and blk.get("type") == "tool_use" \
+                    and blk.get("name") == "foveance_expand":
+                return blk.get("id", ""), str((blk.get("input") or {}).get("item_id", ""))
+        return None
+
+    def expand_followup_anthropic(self, fwd: dict, data: dict,
+                                  tool_use_id: str, item_id: str) -> dict:
+        """Build the follow-up request answering a foveance_expand call with vault content."""
+        nxt = dict(fwd)
+        nxt["messages"] = list(fwd.get("messages") or []) + [
+            {"role": "assistant", "content": data.get("content")},
+            {"role": "user", "content": [{"type": "tool_result", "tool_use_id": tool_use_id,
+                                          "content": self._vault_lookup(item_id)}]},
+        ]
+        return nxt
+
+    def expand_requested_openai(self, data: dict):
+        """(tool_call_id, item_id, message) when an OpenAI chat response calls foveance_expand."""
+        if not isinstance(data, dict):
+            return None
+        msg = ((data.get("choices") or [{}])[0] or {}).get("message") or {}
+        for tc in msg.get("tool_calls") or []:
+            fn = (tc or {}).get("function") or {}
+            if fn.get("name") == "foveance_expand":
+                import json as _json
+                try:
+                    item_id = str(_json.loads(fn.get("arguments") or "{}").get("item_id", ""))
+                except Exception:
+                    item_id = ""
+                return tc.get("id", ""), item_id, msg
+        return None
+
+    def expand_followup_openai(self, fwd: dict, msg: dict,
+                               tool_call_id: str, item_id: str) -> dict:
+        nxt = dict(fwd)
+        nxt["messages"] = list(fwd.get("messages") or []) + [
+            msg,
+            {"role": "tool", "tool_call_id": tool_call_id,
+             "content": self._vault_lookup(item_id)},
+        ]
+        return nxt
 
     def handle(self, request: dict, upstream: Callable[[dict], dict]) -> dict:
         """Rewrite ``request['messages']`` (OpenAI) then forward to ``upstream`` and return it."""
@@ -455,9 +774,16 @@ class FoveanceProxy:
             "est_saved_pct": round(100.0 * saved / tb, 1) if tb else 0.0,
             "price_per_mtok": self.price_per_mtok,
             "est_usd_saved": round(saved * self.price_per_mtok / 1e6, 4),
+            "evictions": self.evictions,
+            "expansions": self.expansions,
             "per_conv": {cid: {"items": len(s.store.order), "turns": s.turn}
                          for cid, s in self.convs.items()},
         }
+        if self.vault is not None:
+            try:
+                out["vault_items"] = self.vault.count()  # type: ignore[attr-defined]
+            except Exception:
+                pass
         if self.savings_log is not None:
             try:
                 t = self.savings_log.totals()  # type: ignore[attr-defined]
@@ -469,7 +795,8 @@ class FoveanceProxy:
 
 
 def build_app(proxy: Optional[FoveanceProxy] = None,
-              upstream_url: str = "http://localhost:11434/v1"):
+              upstream_url: str = "http://localhost:11434/v1",
+              admin_token: Optional[str] = None):
     """Build a FastAPI app that is a transparent, streaming drop-in for both the OpenAI and the
     Anthropic wire protocols, so *any* client or agent that speaks either one works unchanged:
 
@@ -539,15 +866,53 @@ def build_app(proxy: Optional[FoveanceProxy] = None,
             data["foveance"] = stats
         return data
 
+    def _json_call(fwd: dict, path: str, headers: dict):  # pragma: no cover - needs upstream
+        resp = _open(fwd, path, headers)
+        data = json.loads(resp.read())
+        resp.close()
+        return data
+
+    def _respond_expanding(fwd: dict, stats: dict, path: str, headers: dict,
+                           protocol: str):  # pragma: no cover - needs upstream
+        """Like _respond, but transparently resolves foveance_expand tool calls: when the model
+        asks for a compressed item back, the proxy fetches it from the vault and re-issues the
+        request, so the CLIENT never sees a tool it doesn't know. Non-streaming only."""
+        if fwd.get("stream") or not px.expand_tool:
+            return _respond(fwd, stats, path, headers)
+        try:
+            data = _json_call(fwd, path, headers)
+            for _ in range(3):  # bounded expansion loop
+                if protocol == "anthropic":
+                    hit = px.expand_requested_anthropic(data)
+                    if not hit:
+                        break
+                    fwd = px.expand_followup_anthropic(fwd, data, *hit)
+                else:
+                    hit = px.expand_requested_openai(data)
+                    if not hit:
+                        break
+                    tc_id, item_id, msg = hit
+                    fwd = px.expand_followup_openai(fwd, msg, tc_id, item_id)
+                data = _json_call(fwd, path, headers)
+        except urllib.error.HTTPError as e:
+            return Response(content=e.read(), status_code=e.code,
+                            media_type=e.headers.get("Content-Type", "application/json"))
+        if isinstance(data, dict):
+            stats["expansions"] = px.expansions
+            data["foveance"] = stats
+        return data
+
     @app.post("/v1/chat/completions")
     async def chat(request: Request):  # pragma: no cover - needs server
         fwd, stats = px.prepare(await request.json())
-        return _respond(fwd, stats, "/chat/completions", _client_headers(request))
+        return _respond_expanding(fwd, stats, "/chat/completions", _client_headers(request),
+                                  protocol="openai")
 
     @app.post("/v1/messages")
     async def messages(request: Request):  # pragma: no cover - needs server
         fwd, stats = px.prepare_anthropic(await request.json())
-        return _respond(fwd, stats, "/messages", _client_headers(request))
+        return _respond_expanding(fwd, stats, "/messages", _client_headers(request),
+                                  protocol="anthropic")
 
     @app.post("/responses")
     @app.post("/v1/responses")
@@ -570,12 +935,25 @@ def build_app(proxy: Optional[FoveanceProxy] = None,
         return {"status": "ok", "service": "foveance-proxy", "upstream": base,
                 "budget": px.budget, "policy": px.policy}
 
+    def _authed(request: "Request") -> bool:  # pragma: no cover - needs server
+        """Admin auth: open by default; when --admin-token is set, require it via
+        ``?token=...`` or ``Authorization: Bearer ...``."""
+        if not admin_token:
+            return True
+        supplied = request.query_params.get("token") or \
+            request.headers.get("authorization", "").removeprefix("Bearer ").strip()
+        return supplied == admin_token
+
     @app.get("/admin/stats")
-    async def admin_stats():  # pragma: no cover - needs server
+    async def admin_stats(request: Request):  # pragma: no cover - needs server
+        if not _authed(request):
+            return Response(content="unauthorized", status_code=401)
         return px.stats()
 
     @app.get("/admin/export.csv")
-    async def export_csv():  # pragma: no cover - needs server
+    async def export_csv(request: Request):  # pragma: no cover - needs server
+        if not _authed(request):
+            return Response(content="unauthorized", status_code=401)
         if px.savings_log is None:
             return Response(content="Foveance Pro feature: persistent history export requires an "
                                     "active license (foveance license activate <key>).\n",
@@ -641,7 +1019,7 @@ the $ figure uses the configured <code>--price-per-mtok</code>. JSON at
 const f = n => n >= 1e6 ? (n/1e6).toFixed(2)+"M" : n >= 1e3 ? (n/1e3).toFixed(1)+"k" : String(n);
 async function tick(){
   try {
-    const s = await (await fetch("/admin/stats")).json();
+    const s = await (await fetch("/admin/stats" + location.search)).json();
     document.getElementById("saved").textContent = f(s.est_tokens_saved);
     document.getElementById("usd").textContent =
       "\\u2248 $" + s.est_usd_saved.toFixed(4) + " at $" + s.price_per_mtok + "/Mtok input";

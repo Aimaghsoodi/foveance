@@ -146,10 +146,71 @@ def _proxy_from_args(args: argparse.Namespace):
     from . import license as _license
     if _license.current() is not None:
         savings_log = _license.SavingsLog()
+    # R1: anticipatory agentic compression + model-driven re-inflation. Both imply the vault
+    # (durable full texts) so nothing is ever truly lost.
+    agentic_allocator = bool(getattr(args, "agentic_allocator", False)
+                             or os.environ.get("FOVEANCE_AGENTIC_ALLOCATOR")
+                             or config.get("agentic_allocator", False))
+    expand_tool = bool(getattr(args, "expand_tool", False)
+                       or os.environ.get("FOVEANCE_EXPAND_TOOL")
+                       or config.get("expand_tool", False))
+    vault = None
+    if agentic_allocator or expand_tool:
+        from .vault import ItemVault
+        vault = ItemVault()
+    # R3: --learn logs local traces of what each query referenced, and loads the trained model
+    # (foveance train) when one exists, so allocation improves on your own workload.
+    trace_log = future_model = None
+    if bool(getattr(args, "learn", False) or os.environ.get("FOVEANCE_LEARN")
+            or config.get("learn", False)):
+        from .traces import TraceLogger, load_model
+        trace_log = TraceLogger()
+        future_model = load_model()
     proxy = FoveanceProxy(budget=budget, drift=drift, policy=policy, agentic_protect_last=protect,
                           cache_aware=args.cache_aware, price_per_mtok=args.price_per_mtok,
-                          token_counter=token_counter, savings_log=savings_log)
+                          token_counter=token_counter, savings_log=savings_log,
+                          agentic_allocator=agentic_allocator, expand_tool=expand_tool,
+                          vault=vault, trace_log=trace_log, future_model=future_model)
     return proxy, upstream
+
+
+def _admin_token(args) -> "Optional[str]":
+    import os
+
+    return getattr(args, "admin_token", None) or os.environ.get("FOVEANCE_ADMIN_TOKEN") or None
+
+
+def cmd_train(args: argparse.Namespace) -> int:
+    """Fit the learned future-relevance model on locally logged traces (see --learn)."""
+    from .traces import train
+
+    r = train(horizon=args.horizon)
+    if not r["trained"]:
+        print(r["reason"], file=sys.stderr)
+        return 1
+    print(f"Trained on {r['events']} events across {r['conversations']} conversations.")
+    print(f"Model saved to {r['model_path']}; the proxy will use it automatically with --learn.")
+    return 0
+
+
+def cmd_audit(args: argparse.Namespace) -> int:
+    """Replay a conversation log offline and report what Foveance would have saved."""
+    from .audit import audit_conversations, format_report, load_conversations
+
+    convs = load_conversations(args.logfile)
+    if not convs:
+        print(f"no conversations found in {args.logfile} (expected JSON/JSONL with "
+              "'messages' lists)", file=sys.stderr)
+        return 2
+    token_counter = None
+    if args.exact_tokens:
+        from .metrics import make_token_counter
+        token_counter = make_token_counter(args.token_encoding or "cl100k_base")
+    report = audit_conversations(convs, budget=args.budget or 2000,
+                                 token_counter=token_counter)
+    print(format_report(report, price_per_mtok=args.price_per_mtok,
+                        monthly_requests=args.monthly_requests))
+    return 0
 
 
 def cmd_license(args: argparse.Namespace) -> int:
@@ -194,7 +255,7 @@ def cmd_proxy(args: argparse.Namespace) -> int:
 
     proxy, upstream = _proxy_from_args(args)
     base = f"http://{args.host}:{args.port}/v1"
-    app = build_app(proxy, upstream_url=upstream)
+    app = build_app(proxy, upstream_url=upstream, admin_token=_admin_token(args))
     print(f"Foveance proxy  http://{args.host}:{args.port}  ->  upstream {upstream}")
     print(f"  policy={proxy.policy} budget={proxy.budget} tokens/turn drift={proxy.drift}."
           " Point any client here:")
@@ -247,7 +308,7 @@ def cmd_wrap(args: argparse.Namespace) -> int:
                          else "https://api.openai.com/v1")
     proxy, upstream = _proxy_from_args(args)
 
-    app = build_app(proxy, upstream_url=upstream)
+    app = build_app(proxy, upstream_url=upstream, admin_token=_admin_token(args))
     config = uvicorn.Config(app, host="127.0.0.1", port=args.port, log_level="warning")
     server = uvicorn.Server(config)
     threading.Thread(target=server.run, daemon=True).start()
@@ -327,6 +388,19 @@ def build_parser() -> argparse.ArgumentParser:
                          "breakpoint (preserves the provider's prompt cache)")
     pr.add_argument("--price-per-mtok", type=float, default=3.0,
                     help="assumed $/M input tokens for the dashboard's $-saved estimate")
+
+    pr.add_argument("--agentic-allocator", action="store_true",
+                    help="R1: allocate graded fidelities to old tool-transcript payloads with the "
+                         "anticipatory allocator (instead of blind digestion); implies the vault")
+    pr.add_argument("--expand-tool", action="store_true",
+                    help="R1: let the model re-inflate any compressed item via a foveance_expand "
+                         "tool the proxy resolves transparently (non-streaming requests)")
+    pr.add_argument("--admin-token", default=None,
+                    help="require this token (?token=... or Bearer) on /admin endpoints "
+                         "(env: FOVEANCE_ADMIN_TOKEN)")
+    pr.add_argument("--learn", action="store_true",
+                    help="R3: log local traces of what each query referenced and use the "
+                         "trained model from `foveance train` when present (env: FOVEANCE_LEARN)")
     pr.add_argument("--exact-tokens", action="store_true",
                     help="count tokens with a real tokenizer (tiktoken, if installed) instead "
                          "of the chars/4 heuristic, for accounting and the dashboard")
@@ -351,6 +425,19 @@ def build_parser() -> argparse.ArgumentParser:
                    help="never modify content at/before the last Anthropic cache_control breakpoint")
     w.add_argument("--price-per-mtok", type=float, default=3.0,
                    help="assumed $/M input tokens for the exit summary's $-saved estimate")
+
+    w.add_argument("--agentic-allocator", action="store_true",
+                    help="R1: allocate graded fidelities to old tool-transcript payloads with the "
+                         "anticipatory allocator (instead of blind digestion); implies the vault")
+    w.add_argument("--expand-tool", action="store_true",
+                    help="R1: let the model re-inflate any compressed item via a foveance_expand "
+                         "tool the proxy resolves transparently (non-streaming requests)")
+    w.add_argument("--admin-token", default=None,
+                    help="require this token (?token=... or Bearer) on /admin endpoints "
+                         "(env: FOVEANCE_ADMIN_TOKEN)")
+    w.add_argument("--learn", action="store_true",
+                    help="R3: log local traces of what each query referenced and use the "
+                         "trained model from `foveance train` when present (env: FOVEANCE_LEARN)")
     w.add_argument("--exact-tokens", action="store_true",
                    help="count tokens with a real tokenizer (tiktoken, if installed) instead "
                         "of the chars/4 heuristic, for accounting and the exit summary")
@@ -360,6 +447,21 @@ def build_parser() -> argparse.ArgumentParser:
     w.add_argument("command", nargs=argparse.REMAINDER,
                    help="the tool to launch, e.g.: claude   or:  -- codex 'fix the tests'")
     w.set_defaults(func=cmd_wrap)
+
+    tr = sub.add_parser("train", help="fit the learned predictor on locally logged traces")
+    tr.add_argument("--horizon", type=int, default=5)
+    tr.set_defaults(func=cmd_train)
+
+    au = sub.add_parser("audit", help="replay a conversation log offline and report savings")
+    au.add_argument("logfile", help="JSON/JSONL file of conversations (messages lists)")
+    au.add_argument("--budget", type=int, default=None)
+    au.add_argument("--price-per-mtok", type=float, default=3.0)
+    au.add_argument("--monthly-requests", type=int, default=None,
+                    help="extrapolate savings to this many requests per month")
+    au.add_argument("--exact-tokens", action="store_true",
+                    help="count with tiktoken instead of chars/4")
+    au.add_argument("--token-encoding", default=None)
+    au.set_defaults(func=cmd_audit)
 
     lic = sub.add_parser("license", help="activate/status/deactivate a Foveance Pro license")
     lic.add_argument("action", nargs="?", default="status",

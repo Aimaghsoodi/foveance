@@ -57,6 +57,37 @@ on `foveance wrap` as well):
 | `--token-encoding` | `FOVEANCE_TOKEN_ENCODING` | `cl100k_base` | tiktoken encoding for `--exact-tokens`; use `o200k_base` for gpt-4o and newer |
 | `--host` / `--port` | — | `0.0.0.0` / `8799` | bind address |
 
+## v0.3: interactive compression, audit, and the learning loop
+
+**Anticipatory agentic compression + re-inflation** (the flagship pair):
+```bash
+foveance proxy --agentic-allocator --expand-tool --upstream https://api.anthropic.com/v1
+```
+With `--agentic-allocator`, old tool outputs get graded fidelities from the anticipatory
+allocator (not blind digestion). With `--expand-tool`, every compressed item carries an
+addressable marker and the model can call `foveance_expand` to get the full content back; the
+proxy resolves those calls itself against a durable vault (`~/.foveance/vault.db`), so the
+client never sees the tool. Expansion runs on non-streaming requests; streaming requests fall
+back to plain compression.
+
+**Audit your own logs (no API key, nothing sent anywhere):**
+```bash
+foveance audit my_conversations.jsonl --monthly-requests 50000
+```
+Accepts JSON/JSONL of `messages` lists and prints the tokens/$ Foveance would have saved,
+replayed per user turn exactly as agents pay.
+
+**The learning loop (allocation that improves on your workload):**
+```bash
+foveance proxy --learn ...     # logs local traces of what each query referenced
+foveance train                 # fits the relevance model on those traces
+# subsequent --learn runs load the trained model automatically
+```
+Traces and the model live in `~/.foveance/`; nothing leaves the machine.
+
+**Ops:** `--admin-token SECRET` protects `/admin*` (pass `?token=SECRET`); conversation state is
+LRU+TTL evicted so long-running proxies stay bounded, with full texts recoverable via the vault.
+
 ## OpenAI SDK (Python)
 ```python
 from openai import OpenAI

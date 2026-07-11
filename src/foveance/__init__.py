@@ -78,4 +78,4 @@ __all__ = [
     "HashingEmbedder", "Embedder", "cosine",
     "baselines", "metrics",
 ]
-__version__ = "0.1.3"
+__version__ = "0.3.0"
