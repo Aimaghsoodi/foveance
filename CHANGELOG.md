@@ -32,6 +32,14 @@ All notable changes to this project are documented here. The format is based on
   proxy uses it automatically.
 - **Salience-aware digestion**: digests keep query-relevant lines instead of blind head/tail.
 - **Replay benchmark** (`bench/replay_bench.py`): raw vs digest vs allocator on recorded traces.
+- **Multi-model accuracy benchmark** (`bench/paper2_bench.py` + `bench/models.py`): buried-fact
+  recovery across a roster of 8 models via OpenRouter (one OpenAI-compatible endpoint), scoring
+  the four arms raw / digest / allocator / allocator+expand -- the last running the real
+  `foveance_expand` re-inflation loop for tool-capable models. A shared `CostAccountant`
+  (`foveance.llm`) with a hard `--budget-usd` cap keeps a full sweep inside a fixed dollar budget;
+  `OpenRouterLLM` records the provider's exact per-call cost. The whole pipeline (cost accounting,
+  budget guard, expand loop, arm-wise accuracy) is validated offline against an in-process mock,
+  so it is provably ready before spending a cent.
 - `--admin-token` auth for /admin endpoints; stats now report evictions/expansions/vault size.
 
 ### Fixed

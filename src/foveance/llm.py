@@ -6,7 +6,7 @@ or API models). Token counts come from the provider where available, else a toke
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Callable
 import re
 import time
@@ -18,6 +18,41 @@ class Completion:
     input_tokens: int
     output_tokens: int
     latency_s: float
+    cost_usd: float = 0.0
+
+
+class BudgetExceeded(RuntimeError):
+    """Raised when a call would push spend past the accountant's USD cap. The benchmark catches
+    this, writes whatever it has, and stops -- so a $20 cap is a hard stop, never an overshoot."""
+
+
+@dataclass
+class CostAccountant:
+    """Tracks real dollars spent across a benchmark run and enforces a hard cap.
+
+    A single accountant is shared by every model adapter in a run so the cap is global, not
+    per-model. ``guard(est_usd)`` is called *before* a request with a conservative cost estimate;
+    if it would exceed the cap it raises ``BudgetExceeded`` and nothing is sent. ``record`` logs
+    the *actual* cost returned by the provider afterwards.
+    """
+    budget_usd: float = 20.0
+    spent_usd: float = 0.0
+    calls: int = 0
+    by_model: dict = field(default_factory=dict)
+
+    def remaining(self) -> float:
+        return max(0.0, self.budget_usd - self.spent_usd)
+
+    def guard(self, est_usd: float) -> None:
+        if self.spent_usd + max(est_usd, 0.0) > self.budget_usd:
+            raise BudgetExceeded(
+                f"would exceed ${self.budget_usd:.2f} cap "
+                f"(spent ${self.spent_usd:.4f}, est +${est_usd:.4f})")
+
+    def record(self, model: str, usd: float) -> None:
+        self.spent_usd += max(usd, 0.0)
+        self.calls += 1
+        self.by_model[model] = round(self.by_model.get(model, 0.0) + max(usd, 0.0), 6)
 
 
 class LLM:
@@ -130,3 +165,69 @@ class OpenAICompatLLM(LLM):
         it = usage.get("prompt_tokens") or self._count(prompt)
         ot = usage.get("completion_tokens") or self._count(text)
         return Completion(text, it, ot, dt)
+
+
+class OpenRouterLLM(LLM):
+    """OpenRouter (https://openrouter.ai/api/v1) -- one OpenAI-compatible endpoint reaching many
+    models (Llama, Gemma, Qwen, Mistral, Gemini, Claude, GPT ...). Built for cheap multi-model
+    paper runs on a fixed dollar budget: every call is guarded against a shared ``CostAccountant``
+    *before* sending, and the provider's own reported cost is recorded *after*. With
+    ``usage.include=true`` OpenRouter returns the exact credit cost of the generation, so the $
+    accounting is real, not estimated.
+
+    prices: (usd_per_mtok_in, usd_per_mtok_out) used ONLY for the pre-send guard estimate and as a
+    fallback if the response omits cost. Actual spend always prefers the provider's number.
+    """
+    def __init__(self, model: str, api_key: str,
+                 accountant: Optional[CostAccountant] = None,
+                 prices: tuple = (0.0, 0.0),
+                 base_url: str = "https://openrouter.ai/api/v1",
+                 counter: Optional[Callable[[str], int]] = None,
+                 num_predict: int = 48, timeout: float = 90.0,
+                 referer: str = "https://github.com/Aimaghsoodi/foveance"):
+        self.name = f"or:{model}"
+        self.model = model
+        self.api_key = api_key
+        self.accountant = accountant or CostAccountant()
+        self.price_in, self.price_out = prices
+        self.base_url = base_url.rstrip("/")
+        self.num_predict = num_predict
+        self.timeout = timeout
+        self.referer = referer
+        self._count = counter or (lambda s: max(1, len(s) // 4))
+
+    def _estimate_usd(self, prompt: str) -> float:
+        # conservative pre-send estimate: prompt tokens at input price + max decode at output price
+        it = self._count(prompt)
+        return it / 1e6 * self.price_in + self.num_predict / 1e6 * self.price_out
+
+    def generate(self, prompt: str, query: str) -> Completion:  # pragma: no cover
+        import json
+        import urllib.request
+        self.accountant.guard(self._estimate_usd(prompt))   # hard stop BEFORE spending
+        body = json.dumps({
+            "model": self.model,
+            "messages": [{"role": "system", "content": prompt},
+                         {"role": "user", "content": query}],
+            "temperature": 0.0,
+            "max_tokens": self.num_predict,
+            "usage": {"include": True},        # ask OpenRouter for the exact cost of this call
+        }).encode()
+        t0 = time.perf_counter()
+        req = urllib.request.Request(
+            f"{self.base_url}/chat/completions", data=body,
+            headers={"Content-Type": "application/json",
+                     "Authorization": f"Bearer {self.api_key}",
+                     "HTTP-Referer": self.referer, "X-Title": "Foveance benchmark"})
+        with urllib.request.urlopen(req, timeout=self.timeout) as r:
+            data = json.loads(r.read())
+        dt = time.perf_counter() - t0
+        text = data["choices"][0]["message"]["content"] or ""
+        usage = data.get("usage", {}) or {}
+        it = usage.get("prompt_tokens") or self._count(prompt)
+        ot = usage.get("completion_tokens") or self._count(text)
+        cost = usage.get("cost")
+        if cost is None:  # fallback to the price table if the provider omitted cost
+            cost = it / 1e6 * self.price_in + ot / 1e6 * self.price_out
+        self.accountant.record(self.model, float(cost))
+        return Completion(text, it, ot, dt, float(cost))
