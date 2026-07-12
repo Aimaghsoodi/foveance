@@ -1,0 +1,5 @@
+budget,digest_fact_visible,allocator_fact_visible,allocator_recoverable_via_expand
+250,False,False,True
+400,False,False,True
+700,False,False,True
+1200,False,False,True

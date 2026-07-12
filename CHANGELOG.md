@@ -37,6 +37,10 @@ All notable changes to this project are documented here. The format is based on
 ### Fixed
 - Long-running proxies no longer grow without bound: conversation state is LRU+TTL evicted
   (`max_convs`, `conv_ttl_s`), with full texts still recoverable via the vault.
+- **Vault file-handle leak**: `ItemVault` now closes every SQLite connection (via
+  `contextlib.closing`). Previously `with sqlite3.connect(...)` committed but never closed the
+  handle, leaking one per operation and, on Windows, blocking the `.db` file from being deleted
+  (broke the replay benchmark under a temp dir). Regression test added.
 
 ## [0.1.3] - 2026-07-07
 ### Added

@@ -26,6 +26,23 @@ def test_item_ids_are_stable_and_conversation_scoped():
     assert item_id_for("c1", "text") != item_id_for("c2", "text")
 
 
+def test_vault_leaves_no_open_handles(tmp_path):
+    # Regression: sqlite3's own ``with conn`` commits but does not close the handle; on Windows a
+    # lingering handle blocks the .db file from being unlinked. Every op must close its connection.
+    import os
+    sub = tmp_path / "vaultdir"
+    sub.mkdir()
+    p = str(sub / "v.db")
+    v = ItemVault(path=p)
+    iid = item_id_for("c", "payload")
+    v.put("c", iid, "tool_output", "payload")
+    assert v.get_any(iid) == "payload"
+    v.count()
+    v.prune(older_than_days=999)
+    os.remove(p)                       # would raise PermissionError on Windows if a handle leaked
+    assert not os.path.exists(p)
+
+
 # ---------------------------------------------------------------------------- eviction (R4)
 def test_conv_eviction_lru_and_ttl():
     px = FoveanceProxy(budget=120, max_convs=3, conv_ttl_s=9999)

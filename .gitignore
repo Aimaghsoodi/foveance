@@ -21,6 +21,7 @@ bench/results_real/
 bench/results_mock/
 bench/results_*/
 !bench/results_baselines/
+!bench/results_replay/
 bench/report_mock.md
 data/
 !data/longbench/sample.jsonl
