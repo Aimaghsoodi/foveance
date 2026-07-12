@@ -5,7 +5,19 @@ All notable changes to this project are documented here. The format is based on
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.2.0] - 2026-07-12
 ### Added
+- **Foveance Pro** (optional, offline-verified): a Pro license unlocks *persistent* savings
+  accounting — the proxy's token/$ totals survive restarts (SQLite in `~/.foveance/`), the
+  dashboard shows all-time and per-day history, and `/admin/export.csv` exports it. The
+  open-source package remains fully functional without a license.
+  - `foveance license activate <key>` / `status` / `deactivate`. Keys are RSA-2048 signatures
+    over a small JSON payload, verified in pure stdlib against a bundled public modulus — no
+    network call, no phoning home, no new dependencies. The gate is a courtesy to honest users,
+    not DRM.
+  - `FoveanceProxy(savings_log=...)` persists per-request savings; `/admin/export.csv` returns
+    HTTP 402 with an activation hint when no license is active.
 - `foveance.integrations.llamaindex` (a `shrink_chat_messages` wrapper), completing the framework
   integration matrix started in 0.1.3 (#5).
 - `--token-encoding` / `FOVEANCE_TOKEN_ENCODING` for `foveance proxy`/`wrap`: picks the tiktoken
