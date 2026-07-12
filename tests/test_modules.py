@@ -287,9 +287,10 @@ def test_cli_demo_runs(capsys):
 
 
 def test_cli_version(capsys):
+    import foveance
     from foveance.cli import main
     assert main(["version"]) == 0
-    assert "0.1" in capsys.readouterr().out
+    assert foveance.__version__ in capsys.readouterr().out
 
 
 def test_cli_no_command_prints_help(capsys):
