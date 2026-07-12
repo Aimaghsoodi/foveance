@@ -31,6 +31,12 @@ All notable changes to this project are documented here. The format is based on
   query referenced; training calibrates the future-relevance model on YOUR workload, and the
   proxy uses it automatically.
 - **Salience-aware digestion**: digests keep query-relevant lines instead of blind head/tail.
+- **Agent-CLI adapters** (`foveance.adapters`, `foveance adapters`, `foveance env`): a registry of
+  popular agent CLIs/SDKs (Claude Code, Codex, Aider, Cline, opencode, Goose, Continue, LiteLLM,
+  and the raw OpenAI/Anthropic SDKs) with the correct API dialect and base-URL env vars for each.
+  `foveance wrap <tool>` now uses it to set exactly the vars that tool reads (Anthropic vars point
+  at the proxy root, OpenAI vars at root/v1); `foveance adapters` lists them and `foveance env
+  <tool>` prints the exports (bash + PowerShell) for pointing a tool at a long-running proxy.
 - **Replay benchmark** (`bench/replay_bench.py`): raw vs digest vs allocator on recorded traces.
 - **Multi-model accuracy benchmark** (`bench/paper2_bench.py` + `bench/models.py`): buried-fact
   recovery across a roster of 8 models via OpenRouter (one OpenAI-compatible endpoint), scoring

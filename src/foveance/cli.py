@@ -300,12 +300,12 @@ def cmd_wrap(args: argparse.Namespace) -> int:
               "   e.g.: foveance wrap claude", file=sys.stderr)
         return 2
 
-    # Infer the upstream from the tool when not given: Claude-family tools speak Anthropic,
-    # everything else defaults to the OpenAI protocol (override with --upstream/FOVEANCE_UPSTREAM).
+    # Resolve the tool to a known adapter (claude-code, codex, aider, ...) for a precise upstream
+    # and the exact env vars that tool reads. Unknown tools fall back to the broad default env.
+    from .adapters import resolve_adapter, default_env
+    adapter = resolve_adapter(cmd[0])
     if not args.upstream and not os.environ.get("FOVEANCE_UPSTREAM"):
-        name = os.path.basename(cmd[0]).lower()
-        args.upstream = ("https://api.anthropic.com/v1" if "claude" in name
-                         else "https://api.openai.com/v1")
+        args.upstream = adapter.upstream if adapter else "https://api.openai.com/v1"
     proxy, upstream = _proxy_from_args(args)
 
     app = build_app(proxy, upstream_url=upstream, admin_token=_admin_token(args))
@@ -322,12 +322,15 @@ def cmd_wrap(args: argparse.Namespace) -> int:
 
     root = f"http://127.0.0.1:{args.port}"
     env = dict(os.environ)
-    env["ANTHROPIC_BASE_URL"] = root          # Anthropic SDK / Claude Code
-    env["OPENAI_BASE_URL"] = root + "/v1"     # OpenAI SDK / most agents
-    env["OPENAI_API_BASE"] = root + "/v1"     # older OpenAI-compatible clients
+    # Set the tool's specific base-URL vars if we know it; else the broad default set so whatever
+    # the child reads, it finds Foveance. A known adapter also gets the broad set as a safety net.
+    env.update(default_env(root))
+    if adapter:
+        env.update(adapter.env(root))
 
     exe = shutil.which(cmd[0]) or cmd[0]
-    print(f"foveance wrap: proxy {root} -> {upstream}  (dashboard: {root}/)")
+    tag = f" [{adapter.name}]" if adapter else ""
+    print(f"foveance wrap{tag}: proxy {root} -> {upstream}  (dashboard: {root}/)")
     print(f"foveance wrap: launching {' '.join(cmd)}\n")
     try:
         rc = subprocess.call([exe, *cmd[1:]], env=env)
@@ -347,6 +350,41 @@ def cmd_wrap(args: argparse.Namespace) -> int:
               f"  ~ ${s['est_usd_saved']:.4f} at ${s['price_per_mtok']}/Mtok input")
         print("  (chars/4 estimate on request payloads; exact counts come from your provider)")
     return rc
+
+
+def cmd_adapters(args: argparse.Namespace) -> int:
+    """List the agent CLIs/SDKs Foveance knows how to sit in front of."""
+    from .adapters import list_adapters
+    print("Foveance adapters -- run any of these through the proxy:\n")
+    print(f"  {'adapter':<14} {'dialect':<10} {'launch':<26} env vars set")
+    print(f"  {'-'*14} {'-'*10} {'-'*26} {'-'*24}")
+    for a in list_adapters():
+        launch = f"foveance wrap {a.aliases[0] if a.aliases else a.name}"
+        evs = ", ".join((*a.env_root, *a.env_v1)) or "(SDK base_url)"
+        print(f"  {a.name:<14} {a.dialect:<10} {launch:<26} {evs}")
+    print("\nUnknown tool? `foveance wrap -- <cmd>` still sets the common base-URL vars, or use")
+    print("`foveance env <adapter>` to print exports for a long-running `foveance proxy`.")
+    return 0
+
+
+def cmd_env(args: argparse.Namespace) -> int:
+    """Print shell exports that point a tool at an already-running proxy (bash + PowerShell)."""
+    from .adapters import resolve_adapter, default_env
+    root = f"http://{args.host}:{args.port}".rstrip("/")
+    adapter = resolve_adapter(args.adapter)
+    env = default_env(root)
+    if adapter:
+        env.update(adapter.env(root))
+    elif args.adapter not in (None, "", "all"):
+        print(f"# unknown adapter {args.adapter!r}; printing the broad default set", file=sys.stderr)
+    tag = adapter.name if adapter else "default"
+    print(f"# Foveance env for {tag}  (proxy at {root}; start it with `foveance proxy`)")
+    for k, v in env.items():
+        print(f"export {k}={v}")
+    print("# PowerShell:")
+    for k, v in env.items():
+        print(f"#   $env:{k} = \"{v}\"")
+    return 0
 
 
 def cmd_bench(args: argparse.Namespace, extra: list[str]) -> int:
@@ -468,6 +506,16 @@ def build_parser() -> argparse.ArgumentParser:
                      choices=["activate", "status", "deactivate"])
     lic.add_argument("key", nargs="?", default=None, help="license key (for activate)")
     lic.set_defaults(func=cmd_license)
+
+    ad = sub.add_parser("adapters", help="list the agent CLIs/SDKs Foveance can wrap")
+    ad.set_defaults(func=cmd_adapters)
+
+    ev = sub.add_parser("env", help="print shell exports to point a tool at a running proxy")
+    ev.add_argument("adapter", nargs="?", default="all",
+                    help="claude-code | codex | aider | ... (see `foveance adapters`)")
+    ev.add_argument("--host", default="127.0.0.1")
+    ev.add_argument("--port", type=int, default=8799)
+    ev.set_defaults(func=cmd_env)
 
     b = sub.add_parser("bench", help="run the benchmark harness (forwards extra args)")
     b.set_defaults(func=None)

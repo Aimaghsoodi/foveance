@@ -6,12 +6,35 @@ foveance wrap claude                       # Claude Code, routed through Foveanc
 foveance wrap -- codex "fix the tests"     # any other CLI (flags before the --)
 foveance wrap --upstream http://localhost:11434/v1 -- aider   # local models too
 ```
-`wrap` starts the proxy on localhost, sets `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` /
-`OPENAI_API_BASE` **for the child process only**, launches the tool, and prints a tokens-saved
-summary when it exits. The upstream is inferred from the tool name (`claude*` → Anthropic,
-otherwise OpenAI) and can be overridden with `--upstream` or `FOVEANCE_UPSTREAM`. All the proxy
-flags below (`--budget`, `--drift`, `--cache-aware`, `--price-per-mtok`, ...) work on `wrap` too.
-While it runs, a live dashboard serves at `http://localhost:8799/`.
+`wrap` starts the proxy on localhost, sets **exactly the base-URL env vars the target tool reads**
+(Anthropic tools get `ANTHROPIC_BASE_URL` at the proxy root; OpenAI tools get `OPENAI_BASE_URL` /
+`OPENAI_API_BASE` at root `/v1`) **for the child process only**, launches the tool, and prints a
+tokens-saved summary when it exits. The upstream and env vars come from a registry of known
+agents, overridable with `--upstream` / `FOVEANCE_UPSTREAM`. All the proxy flags below
+(`--budget`, `--drift`, `--cache-aware`, `--price-per-mtok`, ...) work on `wrap` too. While it
+runs, a live dashboard serves at `http://localhost:8799/`.
+
+### Supported agents (`foveance adapters`)
+Foveance ships first-class adapters for the popular agent CLIs and SDKs, so `wrap` targets them by
+name with the right dialect and env vars:
+
+| adapter | dialect | launch |
+|---|---|---|
+| Claude Code | Anthropic | `foveance wrap claude` |
+| Codex | OpenAI (Chat + Responses) | `foveance wrap -- codex "..."` |
+| Aider | OpenAI | `foveance wrap -- aider` |
+| Cline / opencode / Goose / Continue | OpenAI | `foveance wrap <tool>` |
+| OpenAI / Anthropic SDKs, LiteLLM | either | `foveance wrap <tool>` |
+
+Run `foveance adapters` to list them. For a **long-running** proxy (started separately with
+`foveance proxy`), print the exports for your tool instead of wrapping it:
+```bash
+eval "$(foveance env codex --port 8799)"     # bash: point Codex at a running proxy
+foveance env claude-code                      # or copy the PowerShell lines it also prints
+```
+Unknown tool? `foveance wrap -- <cmd>` still sets the common base-URL vars, and `--upstream` picks
+the API it forwards to. (The benchmark's OpenRouter client is separate and internal — not a
+user-facing adapter.)
 
 ## The manual way: run the proxy yourself
 
