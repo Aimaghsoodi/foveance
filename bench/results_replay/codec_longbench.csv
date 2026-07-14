@@ -1,0 +1,504 @@
+domain,items,raw_tokens,codec_tokens,saved_pct,factor,lossless
+Long In-context Learning,471,249853,246484,1.3,1.014,True
+Single-Document QA,96,40757,40413,0.8,1.009,True
+Multi-Document QA,691,501264,463761,7.5,1.081,True
+Single-Document QA,1,130564,130564,0.0,1.0,True
+Single-Document QA,34,24702,24671,0.1,1.001,True
+Single-Document QA,1,140312,140312,0.0,1.0,True
+Long-dialogue History Understanding,94,41633,4613,88.9,9.025,True
+Code Repository Understanding,7746,476422,448697,5.8,1.062,True
+Multi-Document QA,76,61124,60396,1.2,1.012,True
+Single-Document QA,14,95686,95686,0.0,1.0,True
+Code Repository Understanding,2871,1059437,999399,5.7,1.06,True
+Long In-context Learning,43,108351,103614,4.4,1.046,True
+Single-Document QA,1291,309507,309490,0.0,1.0,True
+Single-Document QA,1,99861,99861,0.0,1.0,True
+Long In-context Learning,874,156531,143902,8.1,1.088,True
+Multi-Document QA,118,64663,64611,0.1,1.001,True
+Multi-Document QA,402,270412,255580,5.5,1.058,True
+Single-Document QA,1,129148,129148,0.0,1.0,True
+Multi-Document QA,419,262336,253601,3.3,1.034,True
+Multi-Document QA,216,219976,197683,10.1,1.113,True
+Multi-Document QA,59,41480,40572,2.2,1.022,True
+Single-Document QA,24,17003,16613,2.3,1.023,True
+Long Structured Data Understanding,50,217874,217803,0.0,1.0,True
+Long In-context Learning,97,156715,145842,6.9,1.075,True
+Single-Document QA,20,22676,20724,8.6,1.094,True
+Multi-Document QA,89,52446,50684,3.4,1.035,True
+Single-Document QA,51,14651,14583,0.5,1.005,True
+Multi-Document QA,37,27936,27560,1.3,1.014,True
+Multi-Document QA,296,487156,463093,4.9,1.052,True
+Long In-context Learning,265,123866,93944,24.2,1.319,True
+Single-Document QA,135,97816,92852,5.1,1.053,True
+Single-Document QA,1,338930,338930,0.0,1.0,True
+Long Structured Data Understanding,30,128372,128337,0.0,1.0,True
+Long In-context Learning,2669,1310242,966960,26.2,1.355,True
+Multi-Document QA,176,189407,177028,6.5,1.07,True
+Code Repository Understanding,11897,1033067,745278,27.9,1.386,True
+Single-Document QA,3251,80284,80284,0.0,1.0,True
+Multi-Document QA,337,207680,207662,0.0,1.0,True
+Single-Document QA,158,77933,77057,1.1,1.011,True
+Multi-Document QA,24,29616,25424,14.2,1.165,True
+Multi-Document QA,46,16136,15779,2.2,1.023,True
+Long Structured Data Understanding,9,61506,61506,0.0,1.0,True
+Long In-context Learning,97,156715,145842,6.9,1.075,True
+Single-Document QA,64,22101,21556,2.5,1.025,True
+Long Structured Data Understanding,1,104863,104863,0.0,1.0,True
+Single-Document QA,496,305347,305095,0.1,1.001,True
+Long In-context Learning,892,608200,578686,4.9,1.051,True
+Long-dialogue History Understanding,82,21893,5666,74.1,3.864,True
+Single-Document QA,53,50021,49963,0.1,1.001,True
+Single-Document QA,22,16394,16392,0.0,1.0,True
+Single-Document QA,215,78890,76105,3.5,1.037,True
+Single-Document QA,30,21462,21462,0.0,1.0,True
+Multi-Document QA,44,25747,25661,0.3,1.003,True
+Long In-context Learning,471,249849,246423,1.4,1.014,True
+Multi-Document QA,44,17027,15054,11.6,1.131,True
+Single-Document QA,166,82112,78390,4.5,1.047,True
+Long Structured Data Understanding,26,48773,48773,0.0,1.0,True
+Long Structured Data Understanding,1,382031,382031,0.0,1.0,True
+Code Repository Understanding,5915,394621,324555,17.8,1.216,True
+Multi-Document QA,5,15385,15385,0.0,1.0,True
+Single-Document QA,1,30336,30336,0.0,1.0,True
+Single-Document QA,198,82205,82205,0.0,1.0,True
+Single-Document QA,457,173172,173172,0.0,1.0,True
+Single-Document QA,3484,105911,105911,0.0,1.0,True
+Single-Document QA,1,150471,150471,0.0,1.0,True
+Long In-context Learning,401,632661,632661,0.0,1.0,True
+Multi-Document QA,17,16254,15419,5.1,1.054,True
+Single-Document QA,44,23322,23322,0.0,1.0,True
+Single-Document QA,1,119885,119885,0.0,1.0,True
+Multi-Document QA,231,161273,158494,1.7,1.018,True
+Single-Document QA,2,207693,207693,0.0,1.0,True
+Long In-context Learning,265,123866,93944,24.2,1.319,True
+Code Repository Understanding,1642,80439,68216,15.2,1.179,True
+Long-dialogue History Understanding,54,137459,130678,4.9,1.052,True
+Long In-context Learning,401,632661,632661,0.0,1.0,True
+Single-Document QA,22,16515,16370,0.9,1.009,True
+Multi-Document QA,340,222640,221856,0.4,1.004,True
+Single-Document QA,24,16160,15550,3.8,1.039,True
+Single-Document QA,3316,103425,103425,0.0,1.0,True
+Single-Document QA,24,13984,13984,0.0,1.0,True
+Multi-Document QA,38,30663,30056,2.0,1.02,True
+Single-Document QA,104,30932,30932,0.0,1.0,True
+Long Structured Data Understanding,1,137728,137728,0.0,1.0,True
+Single-Document QA,3316,103425,103425,0.0,1.0,True
+Long In-context Learning,558,241729,238905,1.2,1.012,True
+Single-Document QA,3484,105911,105911,0.0,1.0,True
+Long-dialogue History Understanding,78,23061,3383,85.3,6.817,True
+Multi-Document QA,18,21633,21506,0.6,1.006,True
+Single-Document QA,78,50363,49988,0.7,1.008,True
+Long In-context Learning,388,115540,107099,7.3,1.079,True
+Multi-Document QA,36,26189,25804,1.5,1.015,True
+Single-Document QA,17,17524,17507,0.1,1.001,True
+Single-Document QA,15,18156,18002,0.8,1.009,True
+Multi-Document QA,269,189892,186136,2.0,1.02,True
+Multi-Document QA,200,122014,116373,4.6,1.048,True
+Single-Document QA,13,14406,14386,0.1,1.001,True
+Single-Document QA,337,260145,257430,1.0,1.011,True
+Long-dialogue History Understanding,83,28039,3321,88.2,8.443,True
+Single-Document QA,159,128583,119129,7.4,1.079,True
+Multi-Document QA,89,78610,77795,1.0,1.01,True
+Multi-Document QA,143,55482,52609,5.2,1.055,True
+Multi-Document QA,196,184420,165838,10.1,1.112,True
+Long In-context Learning,619,243497,212656,12.7,1.145,True
+Multi-Document QA,55,52342,51382,1.8,1.019,True
+Long In-context Learning,97,156715,145842,6.9,1.075,True
+Multi-Document QA,78,39851,39764,0.2,1.002,True
+Multi-Document QA,59,70308,68624,2.4,1.025,True
+Single-Document QA,372,238685,218811,8.3,1.091,True
+Long In-context Learning,339,226692,226639,0.0,1.0,True
+Single-Document QA,161,65153,57104,12.4,1.141,True
+Long-dialogue History Understanding,83,27713,4169,85.0,6.647,True
+Multi-Document QA,249,230025,223370,2.9,1.03,True
+Multi-Document QA,92,12111,12111,0.0,1.0,True
+Long Structured Data Understanding,1,196457,196457,0.0,1.0,True
+Multi-Document QA,63,74144,72581,2.1,1.022,True
+Single-Document QA,7629,485847,485847,0.0,1.0,True
+Long Structured Data Understanding,62,318816,316620,0.7,1.007,True
+Multi-Document QA,25,32055,31369,2.1,1.022,True
+Long In-context Learning,272,70716,56047,20.7,1.262,True
+Single-Document QA,40,24141,24141,0.0,1.0,True
+Multi-Document QA,241,300869,258088,14.2,1.166,True
+Long In-context Learning,265,123866,93944,24.2,1.319,True
+Single-Document QA,32,17022,16694,1.9,1.02,True
+Code Repository Understanding,1125,112476,100323,10.8,1.121,True
+Code Repository Understanding,7682,480731,445360,7.4,1.079,True
+Single-Document QA,115,58955,57554,2.4,1.024,True
+Long-dialogue History Understanding,51,133503,128565,3.7,1.038,True
+Single-Document QA,411,221691,195969,11.6,1.131,True
+Single-Document QA,1369,103444,103440,0.0,1.0,True
+Long In-context Learning,471,249853,246484,1.3,1.014,True
+Multi-Document QA,242,86063,83830,2.6,1.027,True
+Long In-context Learning,401,632661,632661,0.0,1.0,True
+Long Structured Data Understanding,1,137728,137728,0.0,1.0,True
+Multi-Document QA,39,39222,38119,2.8,1.029,True
+Long-dialogue History Understanding,54,134717,129428,3.9,1.041,True
+Multi-Document QA,167,118627,110612,6.8,1.072,True
+Single-Document QA,3252,80287,80287,0.0,1.0,True
+Single-Document QA,43,33939,32192,5.1,1.054,True
+Single-Document QA,1552,574917,574778,0.0,1.0,True
+Single-Document QA,181,123818,120483,2.7,1.028,True
+Code Repository Understanding,3368,307332,283899,7.6,1.083,True
+Multi-Document QA,101,52508,52437,0.1,1.001,True
+Long In-context Learning,959,503503,468989,6.9,1.074,True
+Code Repository Understanding,67340,3986549,2818012,29.3,1.415,True
+Single-Document QA,1,109662,109662,0.0,1.0,True
+Multi-Document QA,102,59704,57972,2.9,1.03,True
+Single-Document QA,118,116887,114072,2.4,1.025,True
+Single-Document QA,1410,898010,897996,0.0,1.0,True
+Single-Document QA,487,270512,175004,35.3,1.546,True
+Multi-Document QA,26,34013,33289,2.1,1.022,True
+Long In-context Learning,162,52313,39733,24.0,1.317,True
+Long In-context Learning,471,249853,246484,1.3,1.014,True
+Single-Document QA,46,35401,34042,3.8,1.04,True
+Multi-Document QA,77,38410,37938,1.2,1.012,True
+Long Structured Data Understanding,1,261068,261068,0.0,1.0,True
+Long In-context Learning,251,117009,113172,3.3,1.034,True
+Long Structured Data Understanding,1,104186,104186,0.0,1.0,True
+Long In-context Learning,401,632661,632661,0.0,1.0,True
+Multi-Document QA,209,190453,133785,29.8,1.424,True
+Code Repository Understanding,5853,450594,308410,31.6,1.461,True
+Code Repository Understanding,424,32086,21687,32.4,1.48,True
+Single-Document QA,441,178367,178258,0.1,1.001,True
+Code Repository Understanding,673,47777,38411,19.6,1.244,True
+Single-Document QA,12,14213,14201,0.1,1.001,True
+Single-Document QA,1,118297,118297,0.0,1.0,True
+Single-Document QA,24,22410,21766,2.9,1.03,True
+Long Structured Data Understanding,13,14970,14576,2.6,1.027,True
+Long In-context Learning,370,117232,112387,4.1,1.043,True
+Multi-Document QA,561,393916,392165,0.4,1.004,True
+Single-Document QA,1,123068,123068,0.0,1.0,True
+Single-Document QA,27,21978,21940,0.2,1.002,True
+Long-dialogue History Understanding,83,27690,2953,89.3,9.377,True
+Single-Document QA,195,155578,154799,0.5,1.005,True
+Long In-context Learning,225,86587,61192,29.3,1.415,True
+Long Structured Data Understanding,1411,332525,330086,0.7,1.007,True
+Long-dialogue History Understanding,52,133207,128300,3.7,1.038,True
+Single-Document QA,14,12893,12893,0.0,1.0,True
+Multi-Document QA,139,88052,85709,2.7,1.027,True
+Long In-context Learning,618,243400,212590,12.7,1.145,True
+Single-Document QA,1,113943,113943,0.0,1.0,True
+Multi-Document QA,326,151648,149736,1.3,1.013,True
+Multi-Document QA,26,26512,19408,26.8,1.366,True
+Long Structured Data Understanding,1,109961,109961,0.0,1.0,True
+Multi-Document QA,54,40279,39989,0.7,1.007,True
+Long In-context Learning,471,249853,246484,1.3,1.014,True
+Long In-context Learning,255,121203,118457,2.3,1.023,True
+Single-Document QA,424,206530,205692,0.4,1.004,True
+Long In-context Learning,155,13355,13296,0.4,1.004,True
+Long In-context Learning,218,59974,57703,3.8,1.039,True
+Single-Document QA,3484,105911,105911,0.0,1.0,True
+Long-dialogue History Understanding,54,136980,131687,3.9,1.04,True
+Code Repository Understanding,8929,599656,420304,29.9,1.427,True
+Long Structured Data Understanding,1,104705,104705,0.0,1.0,True
+Code Repository Understanding,7428,549348,516151,6.0,1.064,True
+Single-Document QA,301,142442,141859,0.4,1.004,True
+Single-Document QA,1,206328,206328,0.0,1.0,True
+Code Repository Understanding,578,24835,23485,5.4,1.057,True
+Long Structured Data Understanding,88,76505,76505,0.0,1.0,True
+Single-Document QA,1198,513691,468456,8.8,1.097,True
+Long-dialogue History Understanding,82,21874,5211,76.2,4.198,True
+Single-Document QA,3316,103425,103425,0.0,1.0,True
+Single-Document QA,35,23025,23025,0.0,1.0,True
+Single-Document QA,20,19252,18898,1.8,1.019,True
+Single-Document QA,2,180068,180068,0.0,1.0,True
+Long Structured Data Understanding,1,122384,122384,0.0,1.0,True
+Long In-context Learning,825,362936,318272,12.3,1.14,True
+Single-Document QA,1,141933,141933,0.0,1.0,True
+Single-Document QA,132,73565,73552,0.0,1.0,True
+Single-Document QA,110,15023,15023,0.0,1.0,True
+Multi-Document QA,223,16046,16046,0.0,1.0,True
+Multi-Document QA,109,70514,65456,7.2,1.077,True
+Long-dialogue History Understanding,92,34093,8096,76.3,4.211,True
+Single-Document QA,1536,661778,661778,0.0,1.0,True
+Multi-Document QA,56,49251,47922,2.7,1.028,True
+Long-dialogue History Understanding,62,138458,132627,4.2,1.044,True
+Single-Document QA,67,50002,49494,1.0,1.01,True
+Single-Document QA,140,77242,76158,1.4,1.014,True
+Single-Document QA,783,504323,499325,1.0,1.01,True
+Single-Document QA,284,209227,203758,2.6,1.027,True
+Long In-context Learning,43,108351,103614,4.4,1.046,True
+Multi-Document QA,19,17082,14098,17.5,1.212,True
+Long-dialogue History Understanding,82,21974,4013,81.7,5.476,True
+Code Repository Understanding,28985,1668812,1444525,13.4,1.155,True
+Multi-Document QA,334,253984,230935,9.1,1.1,True
+Multi-Document QA,55,58383,54536,6.6,1.071,True
+Multi-Document QA,765,48789,48789,0.0,1.0,True
+Single-Document QA,46,26979,26979,0.0,1.0,True
+Multi-Document QA,574,403929,363857,9.9,1.11,True
+Long Structured Data Understanding,107,148240,148240,0.0,1.0,True
+Long-dialogue History Understanding,78,23264,4669,79.9,4.983,True
+Multi-Document QA,80,56433,56213,0.4,1.004,True
+Long In-context Learning,97,156715,145842,6.9,1.075,True
+Single-Document QA,194,46995,46995,0.0,1.0,True
+Single-Document QA,11482,402179,400807,0.3,1.003,True
+Long In-context Learning,225,86587,61192,29.3,1.415,True
+Multi-Document QA,878,72281,72281,0.0,1.0,True
+Multi-Document QA,23,26293,26003,1.1,1.011,True
+Multi-Document QA,25,28516,28488,0.1,1.001,True
+Multi-Document QA,103,12432,12432,0.0,1.0,True
+Code Repository Understanding,800,74014,52780,28.7,1.402,True
+Multi-Document QA,362,234992,225665,4.0,1.041,True
+Single-Document QA,43,21962,21578,1.7,1.018,True
+Multi-Document QA,34,42775,42467,0.7,1.007,True
+Long In-context Learning,537,40367,40014,0.9,1.009,True
+Single-Document QA,4560,141652,141652,0.0,1.0,True
+Long-dialogue History Understanding,57,141090,135666,3.8,1.04,True
+Long-dialogue History Understanding,59,138703,133031,4.1,1.043,True
+Single-Document QA,157,47915,47915,0.0,1.0,True
+Code Repository Understanding,757,73159,44581,39.1,1.641,True
+Code Repository Understanding,593,48878,31410,35.7,1.556,True
+Long-dialogue History Understanding,82,22017,4116,81.3,5.349,True
+Code Repository Understanding,16368,1110949,1051519,5.3,1.057,True
+Long In-context Learning,354,42184,40360,4.3,1.045,True
+Long In-context Learning,265,148349,146386,1.3,1.013,True
+Code Repository Understanding,1498,84930,66852,21.3,1.27,True
+Single-Document QA,23,20690,20607,0.4,1.004,True
+Single-Document QA,17,19026,18989,0.2,1.002,True
+Long-dialogue History Understanding,58,141564,135775,4.1,1.043,True
+Long In-context Learning,43,108351,103614,4.4,1.046,True
+Long In-context Learning,80,37274,34749,6.8,1.073,True
+Code Repository Understanding,55826,2930536,2710584,7.5,1.081,True
+Long Structured Data Understanding,224,71741,71741,0.0,1.0,True
+Code Repository Understanding,10138,700708,567041,19.1,1.236,True
+Code Repository Understanding,6526,1494942,1440459,3.6,1.038,True
+Single-Document QA,718,375147,374474,0.2,1.002,True
+Single-Document QA,119,74508,72912,2.1,1.022,True
+Long Structured Data Understanding,1,114246,114246,0.0,1.0,True
+Long In-context Learning,225,86587,61192,29.3,1.415,True
+Multi-Document QA,49,44350,43334,2.3,1.023,True
+Single-Document QA,114,25915,25664,1.0,1.01,True
+Long Structured Data Understanding,418,209921,209921,0.0,1.0,True
+Single-Document QA,28,18820,18707,0.6,1.006,True
+Multi-Document QA,62,41687,40126,3.7,1.039,True
+Long-dialogue History Understanding,83,27926,2934,89.5,9.518,True
+Single-Document QA,1,146103,146103,0.0,1.0,True
+Multi-Document QA,31,38364,38315,0.1,1.001,True
+Long In-context Learning,334,112077,97449,13.1,1.15,True
+Single-Document QA,1,166929,166929,0.0,1.0,True
+Multi-Document QA,146,69452,68526,1.3,1.014,True
+Long In-context Learning,533,243920,217844,10.7,1.12,True
+Multi-Document QA,169,114502,111405,2.7,1.028,True
+Long-dialogue History Understanding,55,137554,132505,3.7,1.038,True
+Long In-context Learning,45,22031,21982,0.2,1.002,True
+Multi-Document QA,657,529455,528412,0.2,1.002,True
+Single-Document QA,440,120802,120787,0.0,1.0,True
+Single-Document QA,29,24072,23953,0.5,1.005,True
+Single-Document QA,1,193889,193889,0.0,1.0,True
+Single-Document QA,15,15170,15000,1.1,1.011,True
+Code Repository Understanding,774,68872,49681,27.9,1.386,True
+Single-Document QA,20,13858,13717,1.0,1.01,True
+Long In-context Learning,431,158625,154722,2.5,1.025,True
+Long-dialogue History Understanding,83,27867,2674,90.4,10.421,True
+Single-Document QA,24,20736,20289,2.2,1.022,True
+Single-Document QA,184,23436,23436,0.0,1.0,True
+Multi-Document QA,16,19331,18890,2.3,1.023,True
+Code Repository Understanding,280,26751,24002,10.3,1.115,True
+Multi-Document QA,173,38631,38600,0.1,1.001,True
+Long In-context Learning,814,302588,256733,15.2,1.179,True
+Long-dialogue History Understanding,60,137226,131496,4.2,1.044,True
+Multi-Document QA,746,146893,139576,5.0,1.052,True
+Long Structured Data Understanding,1,111437,111437,0.0,1.0,True
+Single-Document QA,44,35575,33762,5.1,1.054,True
+Long Structured Data Understanding,1,161371,161371,0.0,1.0,True
+Long-dialogue History Understanding,52,135808,130587,3.8,1.04,True
+Single-Document QA,29,17613,17463,0.9,1.009,True
+Long-dialogue History Understanding,83,27847,3170,88.6,8.785,True
+Long-dialogue History Understanding,83,27697,4086,85.2,6.779,True
+Long Structured Data Understanding,16,558192,558192,0.0,1.0,True
+Single-Document QA,54,28370,28288,0.3,1.003,True
+Single-Document QA,176,76811,76811,0.0,1.0,True
+Single-Document QA,80,70891,70657,0.3,1.003,True
+Long In-context Learning,190,95356,88608,7.1,1.076,True
+Long In-context Learning,120,36213,34111,5.8,1.062,True
+Multi-Document QA,50,43010,41498,3.5,1.036,True
+Long In-context Learning,539,151256,134963,10.8,1.121,True
+Single-Document QA,49,16277,15776,3.1,1.032,True
+Single-Document QA,33,24181,23535,2.7,1.027,True
+Long Structured Data Understanding,799,1237341,1237341,0.0,1.0,True
+Single-Document QA,23,20331,19885,2.2,1.022,True
+Single-Document QA,17,24258,23916,1.4,1.014,True
+Single-Document QA,414,18690,18690,0.0,1.0,True
+Code Repository Understanding,2838,156179,129119,17.3,1.21,True
+Code Repository Understanding,22,136188,97718,28.2,1.394,True
+Single-Document QA,20,18166,18139,0.1,1.001,True
+Multi-Document QA,99,53643,49873,7.0,1.076,True
+Long-dialogue History Understanding,60,138742,133075,4.1,1.043,True
+Multi-Document QA,142,13903,13903,0.0,1.0,True
+Single-Document QA,19,19911,19319,3.0,1.031,True
+Long In-context Learning,401,632661,632661,0.0,1.0,True
+Single-Document QA,65,40606,40596,0.0,1.0,True
+Multi-Document QA,287,135640,131471,3.1,1.032,True
+Multi-Document QA,626,460161,437896,4.8,1.051,True
+Long-dialogue History Understanding,78,23061,3383,85.3,6.817,True
+Single-Document QA,18,25708,25685,0.1,1.001,True
+Multi-Document QA,124,13865,13865,0.0,1.0,True
+Long Structured Data Understanding,701,840329,840329,0.0,1.0,True
+Long Structured Data Understanding,427,601361,601361,0.0,1.0,True
+Single-Document QA,29,22680,22307,1.6,1.017,True
+Single-Document QA,32,21505,21377,0.6,1.006,True
+Multi-Document QA,50,36153,36105,0.1,1.001,True
+Long In-context Learning,225,86587,61192,29.3,1.415,True
+Single-Document QA,201,95874,95874,0.0,1.0,True
+Long In-context Learning,97,156715,145842,6.9,1.075,True
+Multi-Document QA,49,53520,53195,0.6,1.006,True
+Multi-Document QA,121,117922,107792,8.6,1.094,True
+Multi-Document QA,26,20224,20066,0.8,1.008,True
+Single-Document QA,13,203863,191840,5.9,1.063,True
+Single-Document QA,27,19828,19828,0.0,1.0,True
+Code Repository Understanding,12627,1084968,789356,27.2,1.374,True
+Multi-Document QA,41,38028,37531,1.3,1.013,True
+Code Repository Understanding,2258,532276,474399,10.9,1.122,True
+Multi-Document QA,315,214619,201120,6.3,1.067,True
+Single-Document QA,11,13878,13820,0.4,1.004,True
+Single-Document QA,29,37326,35863,3.9,1.041,True
+Single-Document QA,94,14836,14836,0.0,1.0,True
+Long In-context Learning,43,108351,103614,4.4,1.046,True
+Multi-Document QA,114,68794,67118,2.4,1.025,True
+Code Repository Understanding,33471,1846425,1639771,11.2,1.126,True
+Multi-Document QA,44,36294,36153,0.4,1.004,True
+Long In-context Learning,265,123866,93944,24.2,1.319,True
+Long Structured Data Understanding,1044,152603,100873,33.9,1.513,True
+Multi-Document QA,272,197133,185020,6.1,1.065,True
+Long In-context Learning,92,25540,25218,1.3,1.013,True
+Long In-context Learning,134,32174,30569,5.0,1.053,True
+Single-Document QA,37,56805,56588,0.4,1.004,True
+Multi-Document QA,33,27930,25381,9.1,1.1,True
+Long Structured Data Understanding,97,85242,85242,0.0,1.0,True
+Single-Document QA,320,31975,31975,0.0,1.0,True
+Code Repository Understanding,34694,2369153,2142613,9.6,1.106,True
+Code Repository Understanding,34694,2369153,2142613,9.6,1.106,True
+Long In-context Learning,166,75732,73294,3.2,1.033,True
+Code Repository Understanding,43249,2761819,1959532,29.0,1.409,True
+Code Repository Understanding,25408,1610204,1500411,6.8,1.073,True
+Single-Document QA,217,101288,100795,0.5,1.005,True
+Long In-context Learning,232,138328,128433,7.2,1.077,True
+Multi-Document QA,23,34752,33319,4.1,1.043,True
+Long In-context Learning,613,240357,214777,10.6,1.119,True
+Single-Document QA,17,24481,24092,1.6,1.016,True
+Single-Document QA,1,84115,84115,0.0,1.0,True
+Multi-Document QA,117,12754,12754,0.0,1.0,True
+Multi-Document QA,25,19021,18930,0.5,1.005,True
+Multi-Document QA,230,127796,102016,20.2,1.253,True
+Code Repository Understanding,2014,104493,88544,15.3,1.18,True
+Long In-context Learning,153,65260,57559,11.8,1.134,True
+Long In-context Learning,471,249853,246484,1.3,1.014,True
+Single-Document QA,1,177163,177163,0.0,1.0,True
+Single-Document QA,284,123067,117878,4.2,1.044,True
+Long-dialogue History Understanding,78,23036,2653,88.5,8.683,True
+Single-Document QA,269,154830,154830,0.0,1.0,True
+Long In-context Learning,295,135923,119305,12.2,1.139,True
+Long In-context Learning,401,632661,632661,0.0,1.0,True
+Long In-context Learning,43,108351,103614,4.4,1.046,True
+Long In-context Learning,471,249853,246484,1.3,1.014,True
+Single-Document QA,43,34331,33166,3.4,1.035,True
+Multi-Document QA,625,408924,407787,0.3,1.003,True
+Long In-context Learning,1362,686638,678147,1.2,1.013,True
+Long In-context Learning,53,31550,29940,5.1,1.054,True
+Single-Document QA,17,24897,24459,1.8,1.018,True
+Long-dialogue History Understanding,55,139476,134119,3.8,1.04,True
+Single-Document QA,3484,105911,105911,0.0,1.0,True
+Multi-Document QA,48,21490,21467,0.1,1.001,True
+Multi-Document QA,97,13747,13747,0.0,1.0,True
+Long-dialogue History Understanding,89,37995,6850,82.0,5.547,True
+Code Repository Understanding,2151,119456,83719,29.9,1.427,True
+Code Repository Understanding,915,91538,88310,3.5,1.037,True
+Multi-Document QA,4044,915789,827187,9.7,1.107,True
+Single-Document QA,82,186936,186936,0.0,1.0,True
+Code Repository Understanding,18531,1303322,1047493,19.6,1.244,True
+Single-Document QA,37,24092,24092,0.0,1.0,True
+Single-Document QA,638,190145,184000,3.2,1.033,True
+Multi-Document QA,539,363894,363270,0.2,1.002,True
+Single-Document QA,1,143845,143845,0.0,1.0,True
+Multi-Document QA,53,48908,48783,0.3,1.003,True
+Multi-Document QA,304,136290,122821,9.9,1.11,True
+Long-dialogue History Understanding,103,48930,10808,77.9,4.527,True
+Code Repository Understanding,11701,1247198,1151106,7.7,1.083,True
+Multi-Document QA,31,23261,23120,0.6,1.006,True
+Multi-Document QA,266,253628,210934,16.8,1.202,True
+Long In-context Learning,43,108351,103614,4.4,1.046,True
+Code Repository Understanding,2606,151401,62682,58.6,2.415,True
+Single-Document QA,257,113690,95112,16.3,1.195,True
+Multi-Document QA,75,56652,53696,5.2,1.055,True
+Single-Document QA,49,32403,32138,0.8,1.008,True
+Multi-Document QA,876,564680,559793,0.9,1.009,True
+Single-Document QA,3252,80287,80287,0.0,1.0,True
+Single-Document QA,605,37002,37002,0.0,1.0,True
+Single-Document QA,1,160299,160299,0.0,1.0,True
+Code Repository Understanding,26034,2034803,1539599,24.3,1.322,True
+Long-dialogue History Understanding,54,137355,132348,3.6,1.038,True
+Multi-Document QA,271,177103,173434,2.1,1.021,True
+Long In-context Learning,308,158586,106843,32.6,1.484,True
+Long In-context Learning,114,45573,44117,3.2,1.033,True
+Multi-Document QA,541,221574,220626,0.4,1.004,True
+Single-Document QA,12,16452,15990,2.8,1.029,True
+Code Repository Understanding,1051,97913,80966,17.3,1.209,True
+Long In-context Learning,84,24505,23881,2.5,1.026,True
+Single-Document QA,53,91661,90705,1.0,1.011,True
+Multi-Document QA,120,60333,59913,0.7,1.007,True
+Multi-Document QA,3125,1800169,1211957,32.7,1.485,True
+Single-Document QA,12,13837,13663,1.3,1.013,True
+Single-Document QA,44,24918,24685,0.9,1.009,True
+Multi-Document QA,12,14310,14067,1.7,1.017,True
+Code Repository Understanding,3432,225956,189574,16.1,1.192,True
+Long-dialogue History Understanding,51,136840,131892,3.6,1.038,True
+Single-Document QA,90,85123,83927,1.4,1.014,True
+Single-Document QA,119,56910,56910,0.0,1.0,True
+Multi-Document QA,224,112492,105449,6.3,1.067,True
+Code Repository Understanding,5890,850010,539036,36.6,1.577,True
+Single-Document QA,20,22269,22197,0.3,1.003,True
+Long Structured Data Understanding,1,2445463,2445463,0.0,1.0,True
+Multi-Document QA,64,53999,53420,1.1,1.011,True
+Single-Document QA,153,136918,136418,0.4,1.004,True
+Single-Document QA,275,117798,114328,2.9,1.03,True
+Code Repository Understanding,37962,2794269,2192788,21.5,1.274,True
+Single-Document QA,306,199410,183544,8.0,1.086,True
+Code Repository Understanding,5238,290180,241320,16.8,1.202,True
+Long-dialogue History Understanding,83,27682,3565,87.1,7.765,True
+Multi-Document QA,13,14704,14610,0.6,1.006,True
+Single-Document QA,2,207397,207397,0.0,1.0,True
+Single-Document QA,1,134142,134142,0.0,1.0,True
+Long In-context Learning,471,249849,246423,1.4,1.014,True
+Multi-Document QA,245,13266,13266,0.0,1.0,True
+Code Repository Understanding,4431,423745,345110,18.6,1.228,True
+Single-Document QA,34,36315,36315,0.0,1.0,True
+Long In-context Learning,67,17867,17391,2.7,1.027,True
+Single-Document QA,3252,80287,80287,0.0,1.0,True
+Single-Document QA,3316,103425,103425,0.0,1.0,True
+Single-Document QA,381,166393,158046,5.0,1.053,True
+Single-Document QA,1,278915,278915,0.0,1.0,True
+Single-Document QA,284,97572,97572,0.0,1.0,True
+Single-Document QA,227,548139,548139,0.0,1.0,True
+Code Repository Understanding,3275,1982527,1817807,8.3,1.091,True
+Single-Document QA,184,19010,19010,0.0,1.0,True
+Long In-context Learning,234,87068,76948,11.6,1.132,True
+Long-dialogue History Understanding,54,136908,131861,3.7,1.038,True
+Long In-context Learning,225,86587,61192,29.3,1.415,True
+Multi-Document QA,89,70866,66451,6.2,1.066,True
+Long In-context Learning,134,29327,21653,26.2,1.354,True
+Long Structured Data Understanding,1,130530,130530,0.0,1.0,True
+Single-Document QA,24,15682,14990,4.4,1.046,True
+Single-Document QA,209,145135,145135,0.0,1.0,True
+Multi-Document QA,122,94609,94048,0.6,1.006,True
+Multi-Document QA,94,46640,40130,14.0,1.162,True
+Multi-Document QA,29,19096,17214,9.9,1.109,True
+Long-dialogue History Understanding,56,131267,125924,4.1,1.042,True
+Long In-context Learning,297,203459,185709,8.7,1.096,True
+Code Repository Understanding,26360,1481488,1219671,17.7,1.215,True
+Single-Document QA,18,14661,14416,1.7,1.017,True
+Single-Document QA,4540,191753,191753,0.0,1.0,True
+Multi-Document QA,51,67621,66494,1.7,1.017,True
+Multi-Document QA,352,83865,78120,6.9,1.074,True
+Single-Document QA,162,163548,158044,3.4,1.035,True
+Multi-Document QA,16,16998,16816,1.1,1.011,True
+Multi-Document QA,374,218628,198098,9.4,1.104,True
+Long-dialogue History Understanding,53,138789,133683,3.7,1.038,True
+Multi-Document QA,74,48830,47633,2.5,1.025,True
+Long In-context Learning,471,249853,246484,1.3,1.014,True
+Long In-context Learning,225,86587,61192,29.3,1.415,True
+Long Structured Data Understanding,50,229151,229151,0.0,1.0,True
+Multi-Document QA,132,49775,48479,2.6,1.027,True
+Single-Document QA,1,99861,99861,0.0,1.0,True
+Multi-Document QA,264,256738,243075,5.3,1.056,True
+Multi-Document QA,89,81241,80290,1.2,1.012,True

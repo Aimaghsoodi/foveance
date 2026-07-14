@@ -1,0 +1,7 @@
+domain,n,mean_saved_pct,median_saved_pct,mean_factor,all_lossless
+Code Repository Understanding,50,18.5,17.3,1.26,True
+Long In-context Learning,81,8.9,5.0,1.11,True
+Long Structured Data Understanding,33,1.1,0.0,1.02,True
+Long-dialogue History Understanding,39,45.0,74.1,4.03,True
+Multi-Document QA,125,4.2,2.1,1.05,True
+Single-Document QA,175,1.5,0.1,1.02,True

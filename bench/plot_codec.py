@@ -291,6 +291,30 @@ def fig_separation(rows):
     _save(fig, "codec_separation")
 
 
+def fig_longbench(rows):
+    """Per-domain lossless saving on the real LongBench-v2 public benchmark."""
+    if not rows:
+        return
+    rows = sorted(rows, key=lambda r: float(r["mean_saved_pct"]))
+    doms = [r["domain"].replace(" Understanding", "").replace("Long-dialogue History",
+            "Long-dialogue Hist.") for r in rows]
+    saved = [float(r["mean_saved_pct"]) for r in rows]
+    ns = [int(r["n"]) for r in rows]
+    fig, ax = plt.subplots(figsize=(7.2, 4.1))
+    bars = ax.barh(range(len(doms)), saved, color="#009E73", edgecolor="black", linewidth=0.6)
+    for i, (b, n) in enumerate(zip(bars, ns)):
+        ax.annotate(f"{saved[i]:.1f}%  (n={n})", (b.get_width() + 0.6, i), va="center",
+                    fontsize=8.2)
+    ax.set_yticks(range(len(doms)))
+    ax.set_yticklabels(doms, fontsize=9)
+    ax.set_xlabel("mean % tokens saved (lossless) on LongBench-v2")
+    ax.set_title("LongBench-v2: codec saving tracks each domain's real redundancy (all lossless)")
+    ax.set_xlim(0, max(saved) * 1.25 + 4)
+    ax.grid(axis="y", visible=False)
+    fig.tight_layout()
+    _save(fig, "codec_longbench")
+
+
 def main():
     acc = load(os.path.join(RES, "codec_paper.csv"))
     fig_pareto(acc)
@@ -299,6 +323,7 @@ def main():
     fig_fullstack(load(os.path.join(RES, "codec_fullstack.csv")))
     fig_scaling(load(os.path.join(RES, "codec_scaling.csv")))
     fig_separation(load(os.path.join(RES, "codec_separation.csv")))
+    fig_longbench(load(os.path.join(RES, "codec_longbench_bydomain.csv")))
     print(f"wrote PDF+PNG figures to {OUT} (accuracy rows: {len(acc)})")
 
 

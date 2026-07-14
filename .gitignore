@@ -26,3 +26,6 @@ bench/report_mock.md
 data/
 !data/longbench/sample.jsonl
 .cache/
+
+# fetched public benchmark data (re-fetchable)
+data/longbench/
