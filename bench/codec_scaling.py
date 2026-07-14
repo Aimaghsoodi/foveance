@@ -105,6 +105,30 @@ def _time_once(codec, items) -> float:
     return time.perf_counter() - t0
 
 
+def run_transport(turn_grid: list) -> list:
+    """Storage/transport case (the vault, not model-read): here references CAN be entropy-coded.
+    Compare raw bytes, generic gzip (byte-level, 32KB window), and codec-then-gzip (line-level LZ
+    with unbounded history, then entropy coding). On long trajectories the codec captures
+    long-range repeats gzip's window misses, so codec+gzip attains a smaller size -- evidence that
+    the entropy-coded transport codec approaches the source entropy, unlike the model-readable
+    in-context codec whose pointer cost is the Theta(log N) readable-reference floor."""
+    import zlib
+    codec = RedundancyCodec(min_run=2, token_counter=_count)
+    rows = []
+    for M in turn_grid:
+        items = trace(M)
+        raw = "\n\n".join(t for _, t in items).encode("utf-8")
+        gz = zlib.compress(raw, 9)
+        rendered, _ = codec.render(items)
+        coded = "\n\n".join(t for _, t in rendered).encode("utf-8")
+        codec_gz = zlib.compress(coded, 9)
+        rows.append({"turns": M, "raw_bytes": len(raw), "gzip_bytes": len(gz),
+                     "codec_gzip_bytes": len(codec_gz),
+                     "gzip_factor": round(len(raw) / len(gz), 2),
+                     "codec_gzip_factor": round(len(raw) / len(codec_gz), 2)})
+    return rows
+
+
 def _write(path, rows):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", newline="") as f:
@@ -136,6 +160,12 @@ def main(argv=None) -> int:
     _write(os.path.join(args.outdir, "codec_overhead.csv"), ov)
     for r in ov:
         print(f"  M={r['turns']:4d}  {r['codec_ms']:8.3f} ms  {r['us_per_token']:.2f} us/token")
+
+    tr = run_transport(grid)
+    _write(os.path.join(args.outdir, "codec_transport.csv"), tr)
+    for r in tr:
+        print(f"  M={r['turns']:4d}  raw {r['raw_bytes']:7d}B  gzip {r['gzip_factor']:5.2f}x  "
+              f"codec+gzip {r['codec_gzip_factor']:5.2f}x")
     return 0
 
 

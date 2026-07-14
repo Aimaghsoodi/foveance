@@ -6,3 +6,4 @@ turns,raw_tokens,codec_tokens,saved_pct,factor,lossless
 32,3957,772,80.5,5.13,True
 64,7917,1332,83.2,5.94,True
 128,15858,2466,84.4,6.43,True
+512,63666,9378,85.3,6.79,True
