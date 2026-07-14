@@ -13,6 +13,24 @@ All notable changes to this project are documented here. The format is based on
   `o200k_base` for gpt-4o and newer so exact-token accounting matches the model you're actually
   routing to).
 
+## [0.4.0] - Unreleased (the codec release)
+### Added
+- **Cross-item redundancy codec** (`foveance.codec.RedundancyCodec`, `foveance.compress`,
+  `foveance compress FILE`): an LZ-family dictionary coder specialised to the line granularity of
+  tool transcripts. It removes redundancy that lives *across* items (re-printed listings, retried
+  stack traces, repeated boilerplate envelopes) which per-item compressors cannot see, and it is
+  **exactly reversible** — `unpack(pack(items)) == items` byte-for-byte, verified by a 200-example
+  property test. Measured **2.3× (56% saved), lossless** on representative redundant agent traffic;
+  **3.10× composed with digestion**; correctly ~0% on low-redundancy traces (it never inflates —
+  a reference is emitted only when it provably costs fewer tokens than the run it replaces).
+- **`CompressionReport`** with a first-class, measured `ratio` / `saved_pct` / `factor`, so
+  Foveance reports a real compression ratio the way a codec should.
+- **`bench/codec_bench.py`** + `bench/traces/make_redundant_trace.py`: measure the codec and the
+  composed allocator+codec ratio on real traces; writes `codec_ratio.csv` and
+  `codec_fullstack.csv`. The full-stack sweep documents the honest high-ratio operating point
+  (up to ~90%+ token reduction on long stale-heavy context, **loss-free via `foveance_expand`**,
+  not for free) alongside the guaranteed-lossless 2.3× floor. See `docs/compression.md`.
+
 ## [0.3.0] - Unreleased (the interactive-compression release)
 ### Added
 - **Anticipatory agentic compression** (`--agentic-allocator`): old tool-transcript payloads get

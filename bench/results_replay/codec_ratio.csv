@@ -1,0 +1,9 @@
+trace,items,method,tokens,saved_pct,factor,lossless
+sre_debug_trace.jsonl,11,raw,7762,0.0,1.0,True
+sre_debug_trace.jsonl,11,digest,7804,-0.5,0.99,False
+sre_debug_trace.jsonl,11,codec,7762,0.0,1.0,True
+sre_debug_trace.jsonl,11,digest+codec,7804,-0.5,0.99,False
+coding_agent_trace.jsonl,17,raw,861,0.0,1.0,True
+coding_agent_trace.jsonl,17,digest,385,55.3,2.24,False
+coding_agent_trace.jsonl,17,codec,376,56.3,2.29,True
+coding_agent_trace.jsonl,17,digest+codec,278,67.7,3.1,False

@@ -213,6 +213,49 @@ def cmd_audit(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_compress(args: argparse.Namespace) -> int:
+    """Losslessly compress a conversation log or text file with the redundancy codec and report
+    the measured ratio. This is the codec surface: reversible, no facts dropped."""
+    from .codec import RedundancyCodec
+
+    token_counter = None
+    if args.exact_tokens:
+        from .metrics import make_token_counter
+        token_counter = make_token_counter(args.token_encoding or "cl100k_base")
+    codec = RedundancyCodec(min_run=args.min_run, token_counter=token_counter)
+
+    # Try the conversation-log shape first (one item per message); fall back to plain text.
+    items: list = []
+    try:
+        from .audit import load_conversations
+        convs = load_conversations(args.path)
+    except Exception:
+        convs = []
+    if convs:
+        for ci, conv in enumerate(convs):
+            for mi, msg in enumerate(conv.get("messages", [])):
+                c = msg.get("content")
+                text = c if isinstance(c, str) else "\n".join(
+                    str(b.get("text", b.get("content", "")) if isinstance(b, dict) else b)
+                    for b in c) if isinstance(c, list) else str(c)
+                if text.strip():
+                    items.append((f"c{ci}m{mi}", text))
+    if not items:
+        with open(args.path, encoding="utf-8", errors="replace") as f:
+            items = [("file", f.read())]
+
+    rendered, report = codec.render(items)
+    print(str(report))
+    if not report.lossless:  # should never happen; the codec guarantees it
+        print("WARNING: round-trip check failed", file=sys.stderr)
+        return 1
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as f:
+            f.write("\n\n".join(t for _, t in rendered))
+        print(f"wrote compressed text to {args.out}")
+    return 0
+
+
 def cmd_license(args: argparse.Namespace) -> int:
     """Activate, inspect, or remove a Foveance Pro license (verified offline)."""
     from . import license as _license
@@ -500,6 +543,17 @@ def build_parser() -> argparse.ArgumentParser:
                     help="count with tiktoken instead of chars/4")
     au.add_argument("--token-encoding", default=None)
     au.set_defaults(func=cmd_audit)
+
+    cp = sub.add_parser("compress", help="losslessly compress a log/text file with the "
+                        "redundancy codec and report the ratio")
+    cp.add_argument("path", help="conversation log (JSON/JSONL) or any text file")
+    cp.add_argument("--min-run", type=int, default=2,
+                    help="shortest run of repeated lines worth referencing")
+    cp.add_argument("--out", default=None, help="write the compressed text here")
+    cp.add_argument("--exact-tokens", action="store_true",
+                    help="count with tiktoken instead of chars/4")
+    cp.add_argument("--token-encoding", default=None)
+    cp.set_defaults(func=cmd_compress)
 
     lic = sub.add_parser("license", help="activate/status/deactivate a Foveance Pro license")
     lic.add_argument("action", nargs="?", default="status",

@@ -1,0 +1,11 @@
+trace,budget,raw_tokens,allocated_tokens,alloc_saved_pct,alloc+codec_tokens,alloc+codec_saved_pct
+sre_debug_trace.jsonl,1200,7762,180,97.7,174,97.8
+sre_debug_trace.jsonl,600,7762,180,97.7,174,97.8
+sre_debug_trace.jsonl,300,7762,180,97.7,174,97.8
+sre_debug_trace.jsonl,150,7762,155,98.0,150,98.1
+sre_debug_trace.jsonl,80,7762,126,98.4,121,98.4
+coding_agent_trace.jsonl,1200,861,899,-4.4,406,52.8
+coding_agent_trace.jsonl,600,861,570,33.8,412,52.1
+coding_agent_trace.jsonl,300,861,288,66.6,264,69.3
+coding_agent_trace.jsonl,150,861,197,77.1,187,78.3
+coding_agent_trace.jsonl,80,861,197,77.1,187,78.3

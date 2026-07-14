@@ -25,7 +25,42 @@ from .predictor import (
 from .allocator import index_allocate, dp_allocate, lp_bound
 from .controller import Controller, RunResult, TurnRecord
 from .embedders import HashingEmbedder, Embedder, cosine
+from .codec import RedundancyCodec, CompressionReport
 from . import baselines, metrics
+
+
+def compress(messages, min_run: int = 2, token_counter=None):
+    """Losslessly compress an OpenAI-style ``messages`` list by removing cross-message redundancy.
+
+    This is Foveance's *codec* surface: unlike :func:`shrink` (which allocates fidelity under a
+    budget and is lossy-but-recoverable), ``compress`` is **exactly reversible** — it replaces any
+    run of lines that already appeared earlier in the conversation with a compact back-reference,
+    the way LZ replaces repeated bytes. It never drops a fact, so it is safe to apply unconditionally.
+
+    Returns ``(new_messages, report)`` where ``report`` is a :class:`CompressionReport` carrying the
+    measured ``ratio`` / ``saved_pct`` / ``factor``. Redundancy across tool outputs (repeated
+    listings, retried stack traces, boilerplate envelopes) is where the win concentrates::
+
+        new_messages, report = compress(messages)
+        print(report)   # e.g. "redundancy-codec: 861 -> 376 tokens (56.3% saved, 2.29x, ...)"
+    """
+    codec = RedundancyCodec(min_run=min_run, token_counter=token_counter)
+
+    def _text(c):
+        if isinstance(c, str):
+            return c
+        if isinstance(c, list):
+            return "\n".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in c)
+        return str(c)
+
+    items = [(str(i), _text(m.get("content", ""))) for i, m in enumerate(messages)]
+    rendered, report = codec.render(items)
+    new_messages = []
+    for m, (_, text) in zip(messages, rendered):
+        nm = dict(m)
+        nm["content"] = text
+        new_messages.append(nm)
+    return new_messages, report
 
 
 def shrink(messages, budget=2000, drift=0.6):
@@ -70,12 +105,13 @@ def shrink_anthropic(system, messages, budget=2000, drift=0.6):
 
 
 __all__ = [
-    "shrink", "shrink_anthropic",
+    "shrink", "shrink_anthropic", "compress",
     "MultiFidelityStore", "Item", "Fidelity", "default_renderer",
     "AnticipatoryPredictor", "PredictorConfig", "FutureRelevancePredictor", "PredictorContext",
     "index_allocate", "dp_allocate", "lp_bound",
     "Controller", "RunResult", "TurnRecord",
     "HashingEmbedder", "Embedder", "cosine",
+    "RedundancyCodec", "CompressionReport",
     "baselines", "metrics",
 ]
 __version__ = "0.3.0"

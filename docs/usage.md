@@ -1,4 +1,15 @@
-# Using Foveance to cut token usage (drop-in)
+# Using Foveance: the LLM context codec (drop-in)
+
+Foveance is a **token-compression codec** with a measured ratio, not a message trimmer. It has a
+*lossless* core (a cross-item redundancy codec — `foveance compress` / `foveance.compress()`), an
+*anticipatory* allocation layer that down-renders whole stale items under a budget, and a
+re-inflation tool that makes that layer loss-free in effect. The theory and the measured ratios
+are in [`compression.md`](compression.md). The one-liner:
+
+```bash
+foveance compress my_trace.jsonl     # lossless: e.g. "861 -> 376 tokens (56.3% saved, 2.29x)"
+```
+
 
 ## The one-command way: `foveance wrap`
 ```bash
