@@ -235,12 +235,70 @@ def fig_fullstack(rows):
     _save(fig, "codec_fullstack")
 
 
+def fig_scaling(rows):
+    """Codec ratio vs trajectory length: savings grow and approach an asymptote."""
+    if not rows:
+        return
+    M = [int(r["turns"]) for r in rows]
+    saved = [float(r["saved_pct"]) for r in rows]
+    factor = [float(r["factor"]) for r in rows]
+    fig, ax = plt.subplots(figsize=(6.4, 4.3))
+    ax.plot(M, saved, "-o", color="#009E73", lw=1.9, ms=6, label="% tokens saved (lossless)")
+    ax.set_xscale("log", base=2)
+    ax.set_xlabel("trajectory length  (tool-use turns, $M$)")
+    ax.set_ylabel("% tokens saved vs. raw", color="#00785A")
+    ax.set_ylim(0, 100)
+    ax.tick_params(axis="y", labelcolor="#00785A")
+    ax2 = ax.twinx()
+    ax2.plot(M, factor, "--s", color="#0072B2", lw=1.5, ms=5, label="compression factor ($\\times$)")
+    ax2.set_ylabel("compression factor  ($\\times$ smaller)", color="#0072B2")
+    ax2.tick_params(axis="y", labelcolor="#0072B2")
+    ax2.spines["top"].set_visible(False)
+    ax.set_title("Scaling law: the codec saves more the longer the agent runs")
+    ax.set_xticks(M)
+    ax.set_xticklabels([str(m) for m in M])
+    lines = ax.get_lines() + ax2.get_lines()
+    ax.legend(lines, [ln.get_label() for ln in lines], loc="lower right")
+    _save(fig, "codec_scaling")
+
+
+def fig_separation(rows):
+    """Per-item vs joint (cross-item) coding: the gap is what per-item methods cannot remove."""
+    if not rows:
+        return
+    M = [int(r["turns"]) for r in rows]
+    per = [float(r["per_item_saved_pct"]) for r in rows]
+    joint = [float(r["joint_saved_pct"]) for r in rows]
+    fig, ax = plt.subplots(figsize=(6.4, 4.3))
+    ax.plot(M, joint, "-*", color="#009E73", lw=1.9, ms=10,
+            label="joint / cross-item (codec, ours)")
+    ax.plot(M, per, "-o", color="#E69F00", lw=1.6, ms=5,
+            label="per-item (AFM / LLMLingua family)")
+    ax.fill_between(M, per, joint, color="#009E73", alpha=0.12)
+    mid = len(M) // 2
+    ax.annotate("cross-item redundancy\n(total correlation):\nunreachable per-item",
+                xy=(M[mid], (per[mid] + joint[mid]) / 2), xytext=(M[1], 55),
+                fontsize=8.4, color="#00785A", ha="left",
+                arrowprops=dict(arrowstyle="->", color="#00785A", lw=1.0))
+    ax.set_xscale("log", base=2)
+    ax.set_xlabel("trajectory length  (tool-use turns, $M$)")
+    ax.set_ylabel("% tokens saved (lossless)")
+    ax.set_ylim(-3, 100)
+    ax.set_title("Separation: per-item compression cannot see cross-item redundancy")
+    ax.set_xticks(M)
+    ax.set_xticklabels([str(m) for m in M])
+    ax.legend(loc="center right")
+    _save(fig, "codec_separation")
+
+
 def main():
     acc = load(os.path.join(RES, "codec_paper.csv"))
     fig_pareto(acc)
     fig_accuracy_by_model(acc)
     fig_ratio(load(os.path.join(RES, "codec_ratio.csv")))
     fig_fullstack(load(os.path.join(RES, "codec_fullstack.csv")))
+    fig_scaling(load(os.path.join(RES, "codec_scaling.csv")))
+    fig_separation(load(os.path.join(RES, "codec_separation.csv")))
     print(f"wrote PDF+PNG figures to {OUT} (accuracy rows: {len(acc)})")
 
 
