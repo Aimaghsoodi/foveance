@@ -13,7 +13,9 @@ All notable changes to this project are documented here. The format is based on
   `o200k_base` for gpt-4o and newer so exact-token accounting matches the model you're actually
   routing to).
 
-## [0.4.0] - Unreleased (the codec release)
+## [0.4.0] - 2026-07-14 (the codec release)
+This release folds in the previously-unreleased 0.3 interactive-compression work (listed below)
+and adds the lossless cross-item codec as the headline feature.
 ### Added
 - **Cross-item redundancy codec** (`foveance.codec.RedundancyCodec`, `foveance.compress`,
   `foveance compress FILE`): an LZ-family dictionary coder specialised to the line granularity of

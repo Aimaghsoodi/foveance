@@ -29,3 +29,4 @@ data/
 
 # fetched public benchmark data (re-fetchable)
 data/longbench/
+bench/results_replay/*.log
