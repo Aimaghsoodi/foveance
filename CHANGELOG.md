@@ -6,11 +6,30 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased] (0.5 — the codec-in-the-proxy release)
 ### Added
+- **Lossless codec on the agentic (tool-use) paths** (`foveance proxy --agentic-codec` /
+  `FOVEANCE_AGENTIC_CODEC=1`): on tool-using requests the codec now runs *across* the old tool
+  payloads in place, collapsing cross-message repeats (re-listed dirs, retried stack traces,
+  boilerplate) to legible pointers with the first occurrence kept verbatim — instead of lossily
+  digesting each payload. Only free-text payload strings are rewritten; message count/order, roles,
+  `tool_use`↔`tool_result` ids, `cache_control` blocks, and the last `agentic_protect_last` turns
+  stay byte-identical, so the provider still validates the request and the prompt cache is never
+  invalidated. Wired through all three dialects (Anthropic Messages, OpenAI Chat, OpenAI Responses)
+  and covered by a full tool-pairing safety matrix. `agentic_codec` surfaced in `/admin/stats`.
+- **New agent adapters**: `foveance wrap`/`env` now know Cursor, Windsurf, Roo Code, Zed, and the
+  Gemini CLI (15 total), each with an honest note on GUI-vs-env configuration.
 - **Lossless codec in the proxy** (`foveance proxy --codec` / `FOVEANCE_CODEC=1`): the 0.4
   cross-item redundancy codec now runs on the assembled plain-chat context, reference-encoding
   repeated line-runs across items **losslessly** (the first occurrence stays verbatim, so no fact
   is dropped). Off by default; a `codec_saved_tokens` counter reports the additional lossless
   saving. Zero accuracy risk, so it is safe to layer on top of any budget/policy.
+### Changed
+- **Codec default `min_run=1`** (was 2): because every reference is already gated by the token
+  guard, dereferencing a single repeated line only when the pointer is strictly cheaper is
+  cost-optimal — measured 76.1% vs 75.6% saved on the redundancy suite, never inflates, losslessness
+  unchanged. Applied to `compress`/`compress_anthropic`/proxy.
+- **Vault storage codec** now picks the strongest installed backend — **Brotli (~50×) or Zstandard
+  (~44×)** when available, falling back to stdlib zlib — via a self-describing 3-byte header.
+  Backward-compatible: legacy headerless-zlib blobs still decode.
 - **`foveance.compress_anthropic(system, messages)`** — the Anthropic-shaped lossless codec
   one-liner, returning `(new_system, new_messages, report)` with the `system` string participating
   in the cross-message dedup.

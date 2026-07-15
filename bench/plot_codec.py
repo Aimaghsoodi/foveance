@@ -44,16 +44,17 @@ plt.rcParams.update({
     "savefig.pad_inches": 0.03,
 })
 
-ARMS = ["full", "recency", "digest", "reactive_afm", "foveance", "codec", "foveance+codec"]
+ARMS = ["full", "recency", "digest", "reactive_afm", "foveance", "codec", "foveance+codec",
+        "llmlingua2"]
 LABEL = {"full": "full (verbatim)", "recency": "recency", "digest": "digest (AFM-style)",
          "reactive_afm": "reactive (AFM)", "foveance": "foveance", "codec": "codec (ours, lossless)",
-         "foveance+codec": "foveance+codec"}
+         "foveance+codec": "foveance+codec", "llmlingua2": "LLMLingua-2 (lossy)"}
 # Okabe-Ito colourblind-safe; the lossless codec is the emphasis colour (bluish-green).
 COLOR = {"full": "#111111", "recency": "#999999", "digest": "#E69F00",
          "reactive_afm": "#56B4E9", "foveance": "#0072B2", "codec": "#009E73",
-         "foveance+codec": "#CC79A7"}
+         "foveance+codec": "#CC79A7", "llmlingua2": "#D55E00"}
 MARK = {"full": "s", "recency": "X", "digest": "v", "reactive_afm": "^",
-        "foveance": "o", "codec": "*", "foveance+codec": "D"}
+        "foveance": "o", "codec": "*", "foveance+codec": "D", "llmlingua2": "P"}
 
 
 def load(path):
@@ -122,6 +123,11 @@ def fig_pareto(rows):
     if "full" in stats:
         t, _, a, _ = stats["full"]
         ax.annotate("full", (t, a), textcoords="offset points", xytext=(8, 2), fontsize=9.5)
+    if "llmlingua2" in stats:
+        t, _, a, _ = stats["llmlingua2"]
+        ax.annotate("LLMLingua-2\n(lossy, cheaper,\nlower accuracy)", (t, a),
+                    textcoords="offset points", xytext=(-6, -6), ha="right", va="top",
+                    fontsize=7.8, color="#8a3d00")
     lossy = [stats[a] for a in ("recency", "digest", "reactive_afm", "foveance") if a in stats]
     if lossy:
         lx = statistics.mean(t for t, _, _, _ in lossy)
@@ -144,7 +150,7 @@ def fig_accuracy_by_model(rows):
     if not rows:
         return
     models = sorted({r["model"] for r in rows})
-    shown = ["full", "digest", "foveance", "codec"]
+    shown = ["full", "digest", "llmlingua2", "codec"]
     fig, ax = plt.subplots(figsize=(7.4, 4.3))
     w = 0.2
     x = list(range(len(models)))
