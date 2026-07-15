@@ -33,6 +33,14 @@ def test_proxy_codec_off_by_default():
     assert FoveanceProxy().apply_codec is False
 
 
+def test_proxy_stats_report_codec_savings():
+    coded = FoveanceProxy(budget=100000, apply_codec=True)
+    coded.transform(_redundant_messages(), conv_id="s")
+    st = coded.stats()
+    assert st["codec"] is True
+    assert st["codec_saved_tokens"] > 0
+
+
 def test_proxy_codec_keeps_last_turn_verbatim():
     msgs = _redundant_messages()
     coded = FoveanceProxy(budget=100000, apply_codec=True)

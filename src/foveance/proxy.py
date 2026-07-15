@@ -795,6 +795,8 @@ class FoveanceProxy:
             "est_usd_saved": round(saved * self.price_per_mtok / 1e6, 4),
             "evictions": self.evictions,
             "expansions": self.expansions,
+            "codec": self.apply_codec,
+            "codec_saved_tokens": self.codec_saved_tokens,
             "per_conv": {cid: {"items": len(s.store.order), "turns": s.turn}
                          for cid, s in self.convs.items()},
         }
