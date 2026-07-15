@@ -73,6 +73,24 @@ _ADAPTERS: list = [
     Adapter("litellm", "openai", OPENAI,
             env_v1=("OPENAI_API_BASE", "OPENAI_BASE_URL"), aliases=("litellm",),
             note="LiteLLM proxy/SDK for openai-family models."),
+    Adapter("cursor", "openai", OPENAI,
+            env_v1=("OPENAI_BASE_URL",), aliases=("cursor", "cursor-ide"),
+            note="Cursor (IDE). Set Settings > Models > 'Override OpenAI Base URL' to the proxy "
+                 "and add an OpenAI-compatible key; the env var applies only when launched from a "
+                 "terminal."),
+    Adapter("windsurf", "openai", OPENAI,
+            env_v1=("OPENAI_BASE_URL",), aliases=("windsurf",),
+            note="Windsurf (Codeium IDE). Point its OpenAI-compatible base URL at the proxy in "
+                 "settings."),
+    Adapter("roo", "openai", OPENAI,
+            env_v1=("OPENAI_BASE_URL",), aliases=("roo", "roo-code", "roocode"),
+            note="Roo Code (VS Code). Set the OpenAI-Compatible provider's Base URL to the proxy."),
+    Adapter("zed", "openai", OPENAI,
+            env_v1=("OPENAI_BASE_URL",), aliases=("zed",),
+            note="Zed editor. Configure an openai provider with api_url pointing at the proxy."),
+    Adapter("gemini", "openai", OPENAI,
+            env_v1=("OPENAI_BASE_URL", "OPENAI_API_BASE"), aliases=("gemini", "gemini-cli"),
+            note="Gemini CLI via its OpenAI-compatible endpoint (base_url=...)."),
 ]
 
 _BY_KEY = {}
