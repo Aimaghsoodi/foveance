@@ -43,6 +43,25 @@ def test_vault_leaves_no_open_handles(tmp_path):
     assert not os.path.exists(p)
 
 
+def test_vault_compression_roundtrip_and_backward_compat(tmp_path):
+    # 0.5: full texts are stored zlib-compressed (transport-codec storage saving); reads must be
+    # exact, and a compressed vault must still read legacy plaintext rows.
+    import sqlite3
+    p = str(tmp_path / "v.db")
+    v = ItemVault(path=p, compress=True)
+    big = "line-alpha\nline-beta\nline-gamma\n" * 200
+    v.put("c", "i1", "tool_output", big)
+    assert v.get("c", "i1") == big and v.get_any("i1") == big     # exact round-trip
+    con = sqlite3.connect(p)
+    ft, blob = con.execute("SELECT full_text, blob FROM items").fetchone()
+    con.close()
+    assert ft == "" and blob is not None and len(blob) < len(big.encode())  # actually smaller
+    # a plaintext (legacy) row is still readable through the compressed vault
+    v_plain = ItemVault(path=str(tmp_path / "v2.db"), compress=False)
+    v_plain.put("c", "i2", "tool_output", "plain")
+    assert ItemVault(path=str(tmp_path / "v2.db"), compress=True).get("c", "i2") == "plain"
+
+
 # ---------------------------------------------------------------------------- eviction (R4)
 def test_conv_eviction_lru_and_ttl():
     px = FoveanceProxy(budget=120, max_convs=3, conv_ttl_s=9999)

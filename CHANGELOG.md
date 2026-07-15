@@ -14,6 +14,10 @@ All notable changes to this project are documented here. The format is based on
 - **`foveance.compress_anthropic(system, messages)`** — the Anthropic-shaped lossless codec
   one-liner, returning `(new_system, new_messages, report)` with the `system` string participating
   in the cross-message dedup.
+- **Entropy-coded vault storage** (`ItemVault(compress=True)`, default on): stored full texts are
+  now zlib-compressed (the transport-codec storage saving — up to ~50–100× on redundant content),
+  realising the paper's storage-side result. Reads transparently handle both compressed and legacy
+  plaintext rows, so existing vaults keep working (a `blob` column is migrated in automatically).
 - `foveance.integrations.llamaindex` (a `shrink_chat_messages` wrapper), completing the framework
   integration matrix started in 0.1.3 (#5).
 - `--token-encoding` / `FOVEANCE_TOKEN_ENCODING` for `foveance proxy`/`wrap`: picks the tiktoken
