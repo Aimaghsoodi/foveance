@@ -315,6 +315,45 @@ def fig_longbench(rows):
     _save(fig, "codec_longbench")
 
 
+def fig_compare(rows):
+    """Head-to-head: saved% (x) vs fact-preservation (y); lossless methods marked. The codec is
+    the only method that is lossless AND keeps every fact."""
+    if not rows:
+        return
+    name_lbl = {"recency": "recency", "digest": "digest (AFM)",
+                "llmlingua2": "LLMLingua-2 (matched)", "llmlingua2_aggr": "LLMLingua-2 (aggressive)",
+                "codec": "codec (ours)"}
+    col = {"recency": "#999999", "digest": "#E69F00", "llmlingua2": "#56B4E9",
+           "llmlingua2_aggr": "#CC79A7", "codec": "#009E73"}
+    # per-method label offsets (points) to avoid collisions
+    off = {"codec": (-4, 12), "llmlingua2": (8, -14), "llmlingua2_aggr": (-12, 12),
+           "digest": (8, 4), "recency": (8, 4)}
+    fig, ax = plt.subplots(figsize=(7.0, 4.6))
+    for r in rows:
+        m = r["method"]
+        if m == "raw" or m not in col:
+            continue
+        x, y = float(r["mean_saved_pct"]), float(r["pct_fact_preserved"])
+        lossless = int(r["pct_lossless"]) >= 100
+        ax.scatter(x, y, s=380 if m == "codec" else 150, marker="*" if lossless else "o",
+                   color=col[m], edgecolor="black", linewidth=0.9 if lossless else 0.5, zorder=3,
+                   label=name_lbl[m] + (" — LOSSLESS" if lossless else " (lossy)"))
+        ax.annotate(name_lbl[m], (x, y), textcoords="offset points",
+                    xytext=off.get(m, (7, 7)), fontsize=8.2, fontweight="bold" if m == "codec"
+                    else "normal")
+    ax.axhspan(95, 101, color="#009E73", alpha=0.08)
+    ax.annotate("ideal: keeps every fact", (55.5, 97.5), fontsize=7.5, color="#00785A",
+                style="italic", va="center")
+    ax.set_xlabel("mean % tokens saved  $\\rightarrow$")
+    ax.set_ylabel("% of buried facts preserved")
+    ax.set_title("Head-to-head: only the codec is lossless AND keeps every fact")
+    ax.set_ylim(-6, 110)
+    ax.set_xlim(55, 100)
+    ax.legend(loc="center left", fontsize=7.8, framealpha=0.95)
+    fig.tight_layout()
+    _save(fig, "codec_compare")
+
+
 def main():
     acc = load(os.path.join(RES, "codec_paper.csv"))
     fig_pareto(acc)
@@ -324,6 +363,7 @@ def main():
     fig_scaling(load(os.path.join(RES, "codec_scaling.csv")))
     fig_separation(load(os.path.join(RES, "codec_separation.csv")))
     fig_longbench(load(os.path.join(RES, "codec_longbench_bydomain.csv")))
+    fig_compare(load(os.path.join(RES, "codec_compare_summary.csv")))
     print(f"wrote PDF+PNG figures to {OUT} (accuracy rows: {len(acc)})")
 
 

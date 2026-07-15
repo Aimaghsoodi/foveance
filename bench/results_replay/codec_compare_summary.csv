@@ -1,0 +1,7 @@
+method,n,mean_saved_pct,pct_lossless,pct_fact_preserved
+raw,8,-0.3,100,100
+recency,8,63.5,0,12
+digest,8,66.6,0,0
+llmlingua2,8,79.6,0,100
+llmlingua2_aggr,8,94.0,0,62
+codec,8,74.9,100,100
