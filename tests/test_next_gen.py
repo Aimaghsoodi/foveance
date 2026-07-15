@@ -62,6 +62,21 @@ def test_vault_compression_roundtrip_and_backward_compat(tmp_path):
     assert ItemVault(path=str(tmp_path / "v2.db"), compress=True).get("c", "i2") == "plain"
 
 
+def test_blob_codec_self_describing_and_legacy_zlib():
+    # 0.5: the vault blob codec picks the strongest installed backend and writes a self-describing
+    # 3-byte magic header, while still decoding legacy headerless zlib blobs from older vaults.
+    import zlib
+
+    from foveance.vault import blob_decode, blob_encode
+    text = "GET /api\nstatus 200\n" * 50
+    enc = blob_encode(text)
+    assert enc[:2] == b"FV" and chr(enc[2]) in "bzl"      # magic + known codec tag
+    assert blob_decode(enc) == text                        # exact round-trip
+    assert len(enc) < len(text.encode())                   # actually compresses
+    # legacy blobs (raw zlib streams, no header) still decode
+    assert blob_decode(zlib.compress(b"legacy content", 9)) == "legacy content"
+
+
 # ---------------------------------------------------------------------------- eviction (R4)
 def test_conv_eviction_lru_and_ttl():
     px = FoveanceProxy(budget=120, max_convs=3, conv_ttl_s=9999)

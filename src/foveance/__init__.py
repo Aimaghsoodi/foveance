@@ -29,7 +29,7 @@ from .codec import RedundancyCodec, CompressionReport
 from . import baselines, metrics
 
 
-def compress(messages, min_run: int = 2, token_counter=None):
+def compress(messages, min_run: int = 1, token_counter=None):
     """Losslessly compress an OpenAI-style ``messages`` list by removing cross-message redundancy.
 
     This is Foveance's *codec* surface: unlike :func:`shrink` (which allocates fidelity under a
@@ -63,7 +63,7 @@ def compress(messages, min_run: int = 2, token_counter=None):
     return new_messages, report
 
 
-def compress_anthropic(system, messages, min_run: int = 2, token_counter=None):
+def compress_anthropic(system, messages, min_run: int = 1, token_counter=None):
     """Losslessly compress an Anthropic-shaped ``(system, messages)`` pair with the codec.
 
     Mirrors :func:`compress` but keeps the ``system`` string separate (it participates in the

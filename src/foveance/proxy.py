@@ -283,7 +283,7 @@ class FoveanceProxy:
         from .codec import RedundancyCodec
         items = [(iid, store.render(iid, levels.get(iid, Fidelity.POINTER)))
                  for iid in store.order]
-        rendered, rep = RedundancyCodec(min_run=2, token_counter=store._count).render(items)
+        rendered, rep = RedundancyCodec(min_run=1, token_counter=store._count).render(items)
         parts = ([self.system_prefix] if self.system_prefix else []) + [t for _, t in rendered]
         ctx = "\n".join(p for p in parts if p)
         self.codec_saved_tokens += max(0, rep.tokens_in - rep.tokens_out)

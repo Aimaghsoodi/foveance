@@ -16,6 +16,57 @@ from contextlib import closing
 from typing import Optional
 
 
+# -- pluggable blob codec ---------------------------------------------------------------------
+# The vault stores each item as a compressed BLOB. stdlib zlib is always available (~38x on
+# redundant agent text); when the stronger general-purpose codecs are installed we transparently
+# use the best one (brotli ~50x, zstd ~44x, measured on the redundancy suite). A 3-byte magic
+# header ``b"FV" + tag`` records which codec wrote the blob so reads never guess; legacy blobs
+# (raw zlib streams, no header) are still decoded via the zlib fallback, so old vaults keep working.
+_MAGIC = b"FV"
+
+
+def _best_codec() -> str:
+    try:
+        import brotli  # noqa: F401
+        return "b"
+    except Exception:
+        pass
+    try:
+        import zstandard  # noqa: F401
+        return "z"
+    except Exception:
+        return "l"
+
+
+def blob_encode(text: str) -> bytes:
+    """Compress ``text`` with the strongest available codec; self-describing (see ``_MAGIC``)."""
+    raw = text.encode("utf-8", "ignore")
+    tag = _best_codec()
+    if tag == "b":
+        import brotli
+        body = brotli.compress(raw, quality=11)
+    elif tag == "z":
+        import zstandard
+        body = zstandard.ZstdCompressor(level=19).compress(raw)
+    else:
+        body = zlib.compress(raw, 9)
+    return _MAGIC + tag.encode("ascii") + body
+
+
+def blob_decode(blob: bytes) -> str:
+    """Inverse of :func:`blob_encode`; also decodes legacy headerless zlib blobs."""
+    if blob[:2] == _MAGIC:
+        tag, body = chr(blob[2]), blob[3:]
+        if tag == "b":
+            import brotli
+            return brotli.decompress(body).decode("utf-8", "replace")
+        if tag == "z":
+            import zstandard
+            return zstandard.ZstdDecompressor().decompress(body).decode("utf-8", "replace")
+        return zlib.decompress(body).decode("utf-8", "replace")
+    return zlib.decompress(blob).decode("utf-8", "replace")  # legacy: raw zlib stream
+
+
 def default_vault_path() -> str:
     d = os.path.join(os.path.expanduser("~"), ".foveance")
     os.makedirs(d, exist_ok=True)
@@ -56,13 +107,13 @@ class ItemVault:
     def _decode(full_text: str, blob) -> str:
         """Prefer the compressed blob; fall back to legacy plaintext."""
         if blob is not None:
-            return zlib.decompress(blob).decode("utf-8", "replace")
+            return blob_decode(blob)
         return full_text
 
     def put(self, conv_id: str, item_id: str, kind: str, full_text: str) -> None:
         text_col, blob_col = (full_text, None)
         if self.compress:
-            text_col, blob_col = ("", zlib.compress(full_text.encode("utf-8", "ignore"), 9))
+            text_col, blob_col = ("", blob_encode(full_text))
         with closing(self._conn()) as c, c:
             c.execute("INSERT OR IGNORE INTO items"
                       "(conv_id, item_id, kind, full_text, created_ts, blob) "

@@ -315,41 +315,66 @@ def fig_longbench(rows):
     _save(fig, "codec_longbench")
 
 
-def fig_compare(rows):
-    """Head-to-head: saved% (x) vs fact-preservation (y); lossless methods marked. The codec is
-    the only method that is lossless AND keeps every fact."""
-    if not rows:
+def fig_compare(a_rows, b_rows):
+    """Two-panel head-to-head against the well-known frameworks, split by the axis that decides
+    usability. (a) In-context compressors, measured in tokens: the codec is the only lossless one
+    and, with LLMLingua-2 (matched), the only one that keeps every buried fact. (b) Transport/
+    storage byte codecs, measured in bytes: general codecs win on raw ratio but their output is
+    not legible (cannot be placed in a prompt), so they solve a different problem."""
+    if not a_rows and not b_rows:
         return
-    name_lbl = {"recency": "recency", "digest": "digest (AFM)",
-                "llmlingua2": "LLMLingua-2 (matched)", "llmlingua2_aggr": "LLMLingua-2 (aggressive)",
-                "codec": "codec (ours)"}
-    col = {"recency": "#999999", "digest": "#E69F00", "llmlingua2": "#56B4E9",
-           "llmlingua2_aggr": "#CC79A7", "codec": "#009E73"}
-    # per-method label offsets (points) to avoid collisions
-    off = {"codec": (-4, 12), "llmlingua2": (8, -14), "llmlingua2_aggr": (-12, 12),
-           "digest": (8, 4), "recency": (8, 4)}
-    fig, ax = plt.subplots(figsize=(7.0, 4.6))
-    for r in rows:
-        m = r["method"]
-        if m == "raw" or m not in col:
-            continue
-        x, y = float(r["mean_saved_pct"]), float(r["pct_fact_preserved"])
-        lossless = int(r["pct_lossless"]) >= 100
-        ax.scatter(x, y, s=380 if m == "codec" else 150, marker="*" if lossless else "o",
-                   color=col[m], edgecolor="black", linewidth=0.9 if lossless else 0.5, zorder=3,
-                   label=name_lbl[m] + (" — LOSSLESS" if lossless else " (lossy)"))
-        ax.annotate(name_lbl[m], (x, y), textcoords="offset points",
-                    xytext=off.get(m, (7, 7)), fontsize=8.2, fontweight="bold" if m == "codec"
-                    else "normal")
-    ax.axhspan(95, 101, color="#009E73", alpha=0.08)
-    ax.annotate("ideal: keeps every fact", (55.5, 97.5), fontsize=7.5, color="#00785A",
-                style="italic", va="center")
-    ax.set_xlabel("mean % tokens saved  $\\rightarrow$")
-    ax.set_ylabel("% of buried facts preserved")
-    ax.set_title("Head-to-head: only the codec is lossless AND keeps every fact")
-    ax.set_ylim(-6, 110)
-    ax.set_xlim(55, 100)
-    ax.legend(loc="center left", fontsize=7.8, framealpha=0.95)
+    GREEN, GREY, DARK = "#009E73", "#B4B4B4", "#333333"
+    fig, (axa, axb) = plt.subplots(1, 2, figsize=(11.0, 4.5))
+
+    # -- Panel (a): in-context (tokens) -----------------------------------------------------
+    a_lbl = {"recency": "recency", "digest": "digest (AFM)",
+             "llmlingua2": "LLMLingua-2\n(matched)", "llmlingua2_aggr": "LLMLingua-2\n(aggressive)",
+             "codec": "codec (ours)"}
+    a_order = ["recency", "digest", "llmlingua2", "llmlingua2_aggr", "codec"]
+    ra = {r["method"]: r for r in a_rows}
+    order = [m for m in a_order if m in ra]
+    y = list(range(len(order)))
+    saved = [float(ra[m]["mean_saved_pct"]) for m in order]
+    colors = [GREEN if m == "codec" else GREY for m in order]
+    axa.barh(y, saved, color=colors, edgecolor="black", linewidth=0.7, height=0.62, zorder=3)
+    axa.set_yticks(y)
+    axa.set_yticklabels([a_lbl[m] for m in order])
+    for yi, m in zip(y, order):
+        ll = int(ra[m]["pct_lossless"]) >= 100
+        fk = int(ra[m]["pct_fact_preserved"])
+        tag = ("lossless" if ll else "lossy") + f", facts {fk}%"
+        axa.annotate(f"{saved[yi]:.0f}%   ({tag})", (saved[yi] + 1.2, yi), va="center",
+                     fontsize=8.3, fontweight="bold" if m == "codec" else "normal",
+                     color=DARK if m == "codec" else "#555555")
+    axa.set_xlim(0, 118)
+    axa.set_xlabel("mean % tokens saved")
+    axa.set_title("(a)  In-context compressors — output must stay legible", fontsize=10.5)
+    axa.grid(axis="y", visible=False)
+    axa.invert_yaxis()
+
+    # -- Panel (b): transport/storage (bytes) -----------------------------------------------
+    b_order = ["gzip", "zlib", "bz2", "lzma", "zstd", "brotli", "codec"]
+    rb = {r["method"]: r for r in b_rows}
+    bo = [m for m in b_order if m in rb]
+    yb = list(range(len(bo)))
+    bsaved = [float(rb[m]["mean_saved_pct"]) for m in bo]
+    bcol = [GREEN if m == "codec" else GREY for m in bo]
+    axb.barh(yb, bsaved, color=bcol, edgecolor="black", linewidth=0.7, height=0.62, zorder=3)
+    axb.set_yticks(yb)
+    axb.set_yticklabels([("codec (ours)" if m == "codec" else m) for m in bo])
+    for yi, m in zip(yb, bo):
+        leg = "legible" if int(rb[m]["pct_legible"]) >= 100 else "NOT legible"
+        axb.annotate(f"{bsaved[yi]:.0f}%   ({leg})", (bsaved[yi] + 1.2, yi), va="center",
+                     fontsize=8.3, fontweight="bold" if m == "codec" else "normal",
+                     color=DARK if m == "codec" else "#555555")
+    axb.set_xlim(0, 118)
+    axb.set_xlabel("mean % bytes saved")
+    axb.set_title("(b)  Transport/storage codecs — output is opaque bytes", fontsize=10.5)
+    axb.grid(axis="y", visible=False)
+    axb.invert_yaxis()
+
+    fig.suptitle("Only the codec compresses losslessly while staying model-readable",
+                 fontsize=12, fontweight="bold", y=1.02)
     fig.tight_layout()
     _save(fig, "codec_compare")
 
@@ -363,7 +388,8 @@ def main():
     fig_scaling(load(os.path.join(RES, "codec_scaling.csv")))
     fig_separation(load(os.path.join(RES, "codec_separation.csv")))
     fig_longbench(load(os.path.join(RES, "codec_longbench_bydomain.csv")))
-    fig_compare(load(os.path.join(RES, "codec_compare_summary.csv")))
+    fig_compare(load(os.path.join(RES, "codec_compare_summary.csv")),
+                load(os.path.join(RES, "codec_compare_bytes_summary.csv")))
     print(f"wrote PDF+PNG figures to {OUT} (accuracy rows: {len(acc)})")
 
 

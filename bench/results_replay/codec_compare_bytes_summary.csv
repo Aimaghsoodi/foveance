@@ -1,0 +1,8 @@
+method,n,mean_saved_pct,pct_legible,pct_lossless
+gzip,8,90.3,0,100
+zlib,8,90.5,0,100
+bz2,8,86.1,0,100
+lzma,8,89.4,0,100
+zstd,8,91.2,0,100
+brotli,8,92.5,0,100
+codec,8,75.4,100,100
