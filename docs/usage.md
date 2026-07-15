@@ -87,6 +87,7 @@ on `foveance wrap` as well):
 | `--agentic-protect-last` | `FOVEANCE_AGENTIC_PROTECT_LAST` | `3` | recent tool-use turns kept full |
 | `--cache-aware` | — | off | never modify content at/before the last Anthropic `cache_control` breakpoint (see [`limitations.md`](limitations.md) for when to enable) |
 | `--price-per-mtok` | — | `3.0` | assumed $/M input tokens for the $-saved estimate |
+| `--codec` | `FOVEANCE_CODEC` | off | apply the **lossless** cross-item redundancy codec to the assembled context (removes repeated line-runs with zero accuracy risk; stacks on any policy) |
 | `--exact-tokens` | — | off | count with a real tokenizer (tiktoken) instead of the chars/4 heuristic |
 | `--token-encoding` | `FOVEANCE_TOKEN_ENCODING` | `cl100k_base` | tiktoken encoding for `--exact-tokens`; use `o200k_base` for gpt-4o and newer |
 | `--host` / `--port` | — | `0.0.0.0` / `8799` | bind address |

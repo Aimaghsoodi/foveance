@@ -166,11 +166,14 @@ def _proxy_from_args(args: argparse.Namespace):
         from .traces import TraceLogger, load_model
         trace_log = TraceLogger()
         future_model = load_model()
+    apply_codec = bool(getattr(args, "codec", False) or os.environ.get("FOVEANCE_CODEC")
+                       or config.get("codec", False))
     proxy = FoveanceProxy(budget=budget, drift=drift, policy=policy, agentic_protect_last=protect,
                           cache_aware=args.cache_aware, price_per_mtok=args.price_per_mtok,
                           token_counter=token_counter, savings_log=savings_log,
                           agentic_allocator=agentic_allocator, expand_tool=expand_tool,
-                          vault=vault, trace_log=trace_log, future_model=future_model)
+                          vault=vault, trace_log=trace_log, future_model=future_model,
+                          apply_codec=apply_codec)
     return proxy, upstream
 
 
@@ -476,6 +479,10 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--expand-tool", action="store_true",
                     help="R1: let the model re-inflate any compressed item via a foveance_expand "
                          "tool the proxy resolves transparently (non-streaming requests)")
+    pr.add_argument("--codec", action="store_true",
+                    help="0.5: apply the lossless cross-item redundancy codec to the assembled "
+                         "context (removes repeated line-runs with zero accuracy risk; "
+                         "env: FOVEANCE_CODEC)")
     pr.add_argument("--admin-token", default=None,
                     help="require this token (?token=... or Bearer) on /admin endpoints "
                          "(env: FOVEANCE_ADMIN_TOKEN)")
@@ -513,6 +520,9 @@ def build_parser() -> argparse.ArgumentParser:
     w.add_argument("--expand-tool", action="store_true",
                     help="R1: let the model re-inflate any compressed item via a foveance_expand "
                          "tool the proxy resolves transparently (non-streaming requests)")
+    w.add_argument("--codec", action="store_true",
+                   help="0.5: apply the lossless cross-item redundancy codec to the assembled "
+                        "context (env: FOVEANCE_CODEC)")
     w.add_argument("--admin-token", default=None,
                     help="require this token (?token=... or Bearer) on /admin endpoints "
                          "(env: FOVEANCE_ADMIN_TOKEN)")

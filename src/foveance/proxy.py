@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
-from .store import MultiFidelityStore, Item, default_renderer, Renderer
+from .store import MultiFidelityStore, Item, Fidelity, default_renderer, Renderer
 from .predictor import AnticipatoryPredictor, FutureRelevancePredictor, PredictorConfig
 from .embedders import HashingEmbedder
 from . import baselines
@@ -269,6 +269,25 @@ class FoveanceProxy:
     # posterior when present, so allocation improves on the user's own workload over time.
     trace_log: Optional[object] = None
     future_model: Optional[FutureRelevancePredictor] = None
+    # 0.5: lossless cross-item redundancy codec on the assembled plain-chat context. After
+    # allocation renders each item, repeated line-runs across items are reference-encoded
+    # losslessly (the first occurrence stays verbatim, so no fact is lost). Off by default;
+    # `--codec` / FOVEANCE_CODEC=1 enables it. Reduces tokens with zero accuracy risk.
+    apply_codec: bool = False
+    codec_saved_tokens: int = 0
+
+    def _assemble(self, store, levels):
+        """Assemble the rendered context, optionally running the lossless codec across items."""
+        if not self.apply_codec:
+            return store.assemble(levels, system=self.system_prefix)
+        from .codec import RedundancyCodec
+        items = [(iid, store.render(iid, levels.get(iid, Fidelity.POINTER)))
+                 for iid in store.order]
+        rendered, rep = RedundancyCodec(min_run=2, token_counter=store._count).render(items)
+        parts = ([self.system_prefix] if self.system_prefix else []) + [t for _, t in rendered]
+        ctx = "\n".join(p for p in parts if p)
+        self.codec_saved_tokens += max(0, rep.tokens_in - rep.tokens_out)
+        return ctx, store._count(ctx)
 
     def _evict(self) -> None:
         now = time.time()
@@ -313,7 +332,7 @@ class FoveanceProxy:
                 pass
         fn = baselines.POLICIES.get(self.policy, baselines.foveance)
         levels = fn(st.store, st.pred, self.budget, st.turn)
-        ctx, ntok = st.store.assemble(levels, system=self.system_prefix)
+        ctx, ntok = self._assemble(st.store, levels)
         st.turn += 1
         return ctx, ntok, st
 

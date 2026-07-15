@@ -63,6 +63,34 @@ def compress(messages, min_run: int = 2, token_counter=None):
     return new_messages, report
 
 
+def compress_anthropic(system, messages, min_run: int = 2, token_counter=None):
+    """Losslessly compress an Anthropic-shaped ``(system, messages)`` pair with the codec.
+
+    Mirrors :func:`compress` but keeps the ``system`` string separate (it participates in the
+    cross-message dedup as the first block). Returns ``(new_system, new_messages, report)``; the
+    transform is exactly reversible, so no fact is dropped.
+    """
+    codec = RedundancyCodec(min_run=min_run, token_counter=token_counter)
+
+    def _text(c):
+        if isinstance(c, str):
+            return c
+        if isinstance(c, list):
+            return "\n".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in c)
+        return str(c)
+
+    items = [("system", system or "")] + [(str(i), _text(m.get("content", "")))
+                                          for i, m in enumerate(messages)]
+    rendered, report = codec.render(items)
+    new_system = rendered[0][1]
+    new_messages = []
+    for m, (_, text) in zip(messages, rendered[1:]):
+        nm = dict(m)
+        nm["content"] = text
+        new_messages.append(nm)
+    return new_system, new_messages, report
+
+
 def shrink(messages, budget=2000, drift=0.6):
     """Compress an OpenAI-style ``messages`` list to about ``budget`` tokens; return a new list.
 
@@ -105,7 +133,7 @@ def shrink_anthropic(system, messages, budget=2000, drift=0.6):
 
 
 __all__ = [
-    "shrink", "shrink_anthropic", "compress",
+    "shrink", "shrink_anthropic", "compress", "compress_anthropic",
     "MultiFidelityStore", "Item", "Fidelity", "default_renderer",
     "AnticipatoryPredictor", "PredictorConfig", "FutureRelevancePredictor", "PredictorContext",
     "index_allocate", "dp_allocate", "lp_bound",

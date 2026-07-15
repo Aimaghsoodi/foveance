@@ -4,8 +4,16 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] (0.5 — the codec-in-the-proxy release)
 ### Added
+- **Lossless codec in the proxy** (`foveance proxy --codec` / `FOVEANCE_CODEC=1`): the 0.4
+  cross-item redundancy codec now runs on the assembled plain-chat context, reference-encoding
+  repeated line-runs across items **losslessly** (the first occurrence stays verbatim, so no fact
+  is dropped). Off by default; a `codec_saved_tokens` counter reports the additional lossless
+  saving. Zero accuracy risk, so it is safe to layer on top of any budget/policy.
+- **`foveance.compress_anthropic(system, messages)`** — the Anthropic-shaped lossless codec
+  one-liner, returning `(new_system, new_messages, report)` with the `system` string participating
+  in the cross-message dedup.
 - `foveance.integrations.llamaindex` (a `shrink_chat_messages` wrapper), completing the framework
   integration matrix started in 0.1.3 (#5).
 - `--token-encoding` / `FOVEANCE_TOKEN_ENCODING` for `foveance proxy`/`wrap`: picks the tiktoken
