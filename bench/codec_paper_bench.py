@@ -16,6 +16,7 @@ Arms:
   foveance       budgeted anticipatory allocation, drift>0    (ours)
   codec          verbatim + lossless cross-item redundancy codec   (ours, LOSSLESS)
   foveance+codec anticipatory allocation, then codec on top   (ours, composed)
+  llmlingua2     REAL LLMLingua-2, matched to the codec's size     (Microsoft, lossy; --with-llmlingua)
 
 Nothing is fabricated: every row is an actual model call. Token counts are the provider's.
 
@@ -109,14 +110,32 @@ def _counter(s: str) -> int:
     return max(1, len(s) // 4)
 
 
+_LL: dict = {}
+
+
+def _llmlingua2(text: str, target: int) -> str:
+    """REAL LLMLingua-2 compression to ~``target`` tokens (CPU). Compressor cached across calls."""
+    if "c" not in _LL:
+        from llmlingua import PromptCompressor
+        _LL["c"] = PromptCompressor(
+            model_name="microsoft/llmlingua-2-xlm-roberta-large-meetingbank",
+            use_llmlingua2=True, device_map="cpu")
+    return _LL["c"].compress_prompt(text, target_token=max(20, target))["compressed_prompt"]
+
+
 def assemble(task: dict, arm: str, budget: int) -> str:
     items = task["items"]
-    codec = RedundancyCodec(min_run=2, token_counter=_counter)
+    codec = RedundancyCodec(min_run=1, token_counter=_counter)
 
     if arm == "full":
         text_items = items
     elif arm == "codec":
         text_items = codec.render(items)[0]
+    elif arm == "llmlingua2":
+        # match the lossy compressor to the codec's output size, then compress the raw context
+        raw = "\n\n".join(f"[{i}]\n{t}" for i, t in items)
+        target = codec.render(items)[1].tokens_out
+        return task["system"] + "\n\n" + _llmlingua2(raw, target)
     elif arm == "recency":
         keep = 4
         text_items = [(i, t) if k >= len(items) - keep else (i, f"[{i}: older tool output elided]")
@@ -167,7 +186,8 @@ def _load_done(out: str) -> set:
     return done
 
 
-def run(backend: str, models: list, budgets: list, ntasks: int, out: str) -> int:
+def run(backend: str, models: list, budgets: list, ntasks: int, out: str,
+        with_llmlingua: bool = False) -> int:
     tasks = [make_task(s) for s in range(ntasks)]
     os.makedirs(os.path.dirname(out), exist_ok=True)
     done = _load_done(out)
@@ -177,10 +197,11 @@ def run(backend: str, models: list, budgets: list, ntasks: int, out: str) -> int
     if new_file:
         w.writeheader()
         f.flush()
+    arms = ARMS + (["llmlingua2"] if with_llmlingua else [])
     n_new = 0
     for model in models:
         llm = make_llm(backend, model)
-        for arm in ARMS:
+        for arm in arms:
             arm_budgets = budgets if arm in ("recency", "reactive_afm", "foveance",
                                              "foveance+codec") else [budgets[0]]
             for budget in arm_budgets:
@@ -218,7 +239,7 @@ def _summary(rows: list) -> None:
         by[r["arm"]]["tok"].append(int(r["in_tokens"]))
         by[r["arm"]]["vis"].append(int(r["gold_visible"]))
     print("\narm             acc    tokens   gold-visible")
-    for arm in ARMS:
+    for arm in ARMS + ["llmlingua2"]:
         if arm not in by:
             continue
         a = by[arm]
@@ -233,10 +254,13 @@ def main(argv=None) -> int:
     ap.add_argument("--budgets", default="500,1500")
     ap.add_argument("--tasks", type=int, default=6)
     ap.add_argument("--out", default="bench/results_replay/codec_paper.csv")
+    ap.add_argument("--with-llmlingua", action="store_true",
+                    help="add a REAL LLMLingua-2 arm matched to the codec's size (slow, CPU)")
     args = ap.parse_args(argv)
     models = [m.strip() for m in args.models.split(",") if m.strip()]
     budgets = [int(b) for b in args.budgets.split(",")]
-    return run(args.backend, models, budgets, args.tasks, args.out)
+    return run(args.backend, models, budgets, args.tasks, args.out,
+               with_llmlingua=args.with_llmlingua)
 
 
 if __name__ == "__main__":

@@ -275,6 +275,26 @@ class FoveanceProxy:
     # `--codec` / FOVEANCE_CODEC=1 enables it. Reduces tokens with zero accuracy risk.
     apply_codec: bool = False
     codec_saved_tokens: int = 0
+    # 0.5: the same lossless codec, but on the AGENTIC in-place paths. Instead of (lossily) digesting
+    # each large old tool payload, run the codec *across* the eligible free-text payloads so
+    # cross-message repeats (re-listed dirs, retried stack traces, boilerplate) collapse to legible
+    # pointers with the first occurrence kept verbatim -- no fact lost. It rewrites only the free-text
+    # payload strings; message count/order, roles, tool_use<->tool_result ids, cache_control blocks,
+    # and the last ``agentic_protect_last`` turns are all left byte-identical, so the provider still
+    # validates the request and the prompt cache is never invalidated. Off by default; opt-in.
+    agentic_codec: bool = False
+
+    def _codec_stream(self, payloads: list):
+        """Run the lossless cross-item codec over ``payloads`` (ordered eligible free-text strings)
+        and return an iterator of their coded forms in the same order. Each coded string is <= its
+        input in tokens (the codec never inflates) and the set is exactly reversible (first
+        occurrence verbatim). Updates ``codec_saved_tokens``. Structure/ids are never seen here, so
+        tool pairing cannot break."""
+        from .codec import RedundancyCodec
+        codec = RedundancyCodec(min_run=1, token_counter=self.token_counter)
+        rendered, rep = codec.render([(str(k), p) for k, p in enumerate(payloads)])
+        self.codec_saved_tokens += max(0, rep.tokens_in - rep.tokens_out)
+        return iter([t for _, t in rendered])
 
     def _assemble(self, store, levels):
         """Assemble the rendered context, optionally running the lossless codec across items."""
@@ -489,17 +509,24 @@ class FoveanceProxy:
         levels = self._collect_candidates(
             conv_id, [_payloads(), _extract_text(messages[-1].get("content", ""))]
         ) if messages else None
+        # When the agentic codec is on, replace the lossy per-payload digest with a single lossless
+        # codec pass across those same payloads (consumed below in the identical traversal order).
+        cod = self._codec_stream([p for _, p in _payloads()]) if self.agentic_codec else None
+
+        def _rewrite(text: str, kind: str) -> str:
+            return next(cod) if cod is not None else self._alloc_or_digest(
+                text, kind, conv_id, qt, levels)
 
         def _blk(b):
             if not isinstance(b, dict) or b.get("cache_control"):
                 return b
             if b.get("type") == "text" and isinstance(b.get("text"), str) \
                     and len(b["text"]) > self.agentic_min_chars:
-                nd = self._alloc_or_digest(b["text"], "text", conv_id, qt, levels)
+                nd = _rewrite(b["text"], "text")
                 return b if nd == b["text"] else {**b, "text": nd}
             if b.get("type") == "tool_result" and isinstance(b.get("content"), str) \
                     and len(b["content"]) > self.agentic_min_chars:
-                nd = self._alloc_or_digest(b["content"], "tool_output", conv_id, qt, levels)
+                nd = _rewrite(b["content"], "tool_output")
                 return b if nd == b["content"] else {**b, "content": nd}
             return _digest_block(b, qt)
 
@@ -509,7 +536,7 @@ class FoveanceProxy:
             if i >= cut or i < start:
                 out.append(m)
             elif isinstance(c, str):
-                nd = (self._alloc_or_digest(c, m.get("role", "message"), conv_id, qt, levels)
+                nd = (_rewrite(c, m.get("role", "message"))
                       if len(c) > self.agentic_min_chars else c)
                 out.append(m if nd == c else {**m, "content": nd})
             elif isinstance(c, list):
@@ -543,6 +570,7 @@ class FoveanceProxy:
         levels = self._collect_candidates(
             conv_id, [_payloads(), _extract_text(messages[-1].get("content", ""))]
         ) if messages else None
+        cod = self._codec_stream([p for _, p in _payloads()]) if self.agentic_codec else None
 
         out = []
         for i, m in enumerate(messages):
@@ -551,7 +579,8 @@ class FoveanceProxy:
                 out.append(m)
             elif isinstance(c, str) and (m.get("role") == "tool" or len(c) > self.agentic_min_chars):
                 kind = "tool_output" if m.get("role") == "tool" else m.get("role", "message")
-                nd = self._alloc_or_digest(c, kind, conv_id, qt, levels)
+                nd = next(cod) if cod is not None else self._alloc_or_digest(c, kind, conv_id, qt,
+                                                                             levels)
                 out.append(m if nd == c else {**m, "content": nd})
             elif isinstance(c, list):
                 nc = [_digest_block(b, qt) for b in c]
@@ -584,12 +613,14 @@ class FoveanceProxy:
             return found
 
         levels = self._collect_candidates(conv_id, [_payloads(), last_text]) if items else None
+        cod = self._codec_stream([p for _, p in _payloads()]) if self.agentic_codec else None
 
         def _item(it):
             if isinstance(it, dict) and it.get("type") == "function_call_output" \
                     and isinstance(it.get("output"), str) \
                     and len(it["output"]) > self.agentic_min_chars:
-                nd = self._alloc_or_digest(it["output"], "tool_output", conv_id, qt, levels)
+                nd = next(cod) if cod is not None else self._alloc_or_digest(
+                    it["output"], "tool_output", conv_id, qt, levels)
                 return it if nd == it["output"] else {**it, "output": nd}
             return _digest_responses_item(it)
 
@@ -796,6 +827,7 @@ class FoveanceProxy:
             "evictions": self.evictions,
             "expansions": self.expansions,
             "codec": self.apply_codec,
+            "agentic_codec": self.agentic_codec,
             "codec_saved_tokens": self.codec_saved_tokens,
             "per_conv": {cid: {"items": len(s.store.order), "turns": s.turn}
                          for cid, s in self.convs.items()},
