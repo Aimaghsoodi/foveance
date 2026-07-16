@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<p align="center"><b>Cut your LLM token bill by 60%+ — without changing your code or your answers.</b></p>
+<p align="center"><b>A real compression codec for LLM context. <b>75% fewer input tokens, losslessly</b> — nothing dropped, every fact kept.</b></p>
 
 <p align="center">
   <a href="https://pypi.org/project/foveance/"><img alt="PyPI" src="https://img.shields.io/pypi/v/foveance?color=blue"></a>
@@ -39,8 +39,11 @@ trims the parts that don't, and hands the model a shorter context — so you get
 answers for a fraction of the tokens**. Nothing is deleted forever, and you don't change a
 single line of your app.
 
-> In real tests it kept full accuracy while using **60–64% fewer tokens**, and it *correctly*
-> recalled a buried fact that the full, uncompressed history got **wrong**.
+> The codec is **exactly reversible**: it replaces text that already appeared with a short
+> back-reference, so it removes tokens without ever removing information. On redundant agent traffic
+> that is **75% fewer input tokens** (82% with the opt-in template pass) — and across five local
+> models it *answered better than the uncompressed baseline* (0.95 vs 0.90), because stripping the
+> repetition helps the model find the fact.
 
 ---
 

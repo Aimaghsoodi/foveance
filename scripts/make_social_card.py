@@ -115,21 +115,22 @@ def main():
     mark(img, MARGIN + 40, 118, 40)
     d = ImageDraw.Draw(img)
     d.text((MARGIN + 100, 92), "Foveance", font=font(46, "semibold"), fill=INK)
-    d.text((MARGIN + 102, 148), "ANTICIPATORY  CONTEXT  ALLOCATION", font=font(17, "semibold"),
+    d.text((MARGIN + 102, 148), "LOSSLESS  TOKEN  COMPRESSION", font=font(17, "semibold"),
            fill=FAINT)
 
-    # headline
-    h1 = fit(d, "Cut your LLM token bill", "black", 88, usable)
-    d.text((MARGIN, 244), "Cut your LLM token bill", font=h1, fill=INK)
+    # headline. The number is the measured in-context codec saving (bench/results_replay/
+    # codec_compare_summary.csv); "losslessly" is the differentiator, so it carries the accent.
+    h1 = fit(d, "75% fewer input tokens.", "black", 88, usable)
+    d.text((MARGIN, 244), "75% fewer input tokens.", font=h1, fill=INK)
     y2 = 244 + h1.size + 14
     by = font(88, "black")
-    d.text((MARGIN, y2), "by ", font=by, fill=INK)
-    d.text((MARGIN + w_of(d, "by ", by), y2), "60%+", font=by, fill=AMBER)
+    d.text((MARGIN, y2), "Losslessly", font=by, fill=AMBER)
+    d.text((MARGIN + w_of(d, "Losslessly", by), y2), ".", font=by, fill=INK)
 
     # subhead
     d.text((MARGIN, y2 + by.size + 26),
-           "Same code. Same answers. A fraction of the tokens.",
-           font=font(30, "regular"), fill=DIM)
+           "A real codec for LLM context. Nothing dropped, every fact kept.",
+           font=font(28, "regular"), fill=DIM)
 
     # bottom row: install pill + repo url on one baseline
     pill_y = H - 108

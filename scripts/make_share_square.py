@@ -94,12 +94,12 @@ def main():
     d = ImageDraw.Draw(img)
 
     center(d, "Foveance", font(58, "semibold"), 340, INK)
-    center(d, "ANTICIPATORY  CONTEXT  ALLOCATION", font(20, "semibold"), 410, FAINT)
+    center(d, "LOSSLESS  TOKEN  COMPRESSION", font(20, "semibold"), 410, FAINT)
 
-    center(d, "Cut your LLM", font(94, "black"), 500, INK)
-    # "token bill by 60%+" with amber accent, centered as one line
+    center(d, "75% fewer tokens.", font(94, "black"), 500, INK)
+    # "Losslessly." on its own line with the amber accent (the whole line fits the square)
     f = font(94, "black")
-    a, b = "token bill by ", "60%+"
+    a, b = "", "Losslessly."
     wa, wb = d.textlength(a, font=f), d.textlength(b, font=f)
     x0 = (S - (wa + wb)) / 2
     d.text((x0, 604), a, font=f, fill=INK)
