@@ -1,0 +1,5 @@
+task,n,mean_saved_pct,median_saved_pct,mean_factor,all_lossless
+niah_multikey,120,0.0,0.0,1.0,True
+niah_single,180,32.6,0.0,17.74,True
+qa,120,0.1,0.0,1.0,True
+vt,60,91.4,92.6,15.47,True

@@ -387,6 +387,41 @@ def fig_compare(a_rows, b_rows):
     _save(fig, "codec_compare")
 
 
+# ---- Figure 11: RULER (public negative control) ---------------------------------------------
+def fig_ruler(rows):
+    """RULER by task family. Most RULER tasks plant distinct needles/keys, so there is nothing to
+    dedup and the codec correctly returns ~0% while never inflating: a public negative control for
+    the claim that the saving tracks real redundancy. Where RULER does repeat (variable tracking),
+    the codec captures it."""
+    if not rows:
+        return
+    lbl = {"qa": "qa\n(real documents)", "niah_multikey": "niah_multikey\n(distinct keys)",
+           "niah_single": "niah_single\n(mixed)", "vt": "vt\n(variable tracking)"}
+    order = ["qa", "niah_multikey", "niah_single", "vt"]
+    rr = {r["task"]: r for r in rows}
+    bo = [t for t in order if t in rr]
+    vals = [float(rr[t]["mean_saved_pct"]) for t in bo]
+    fig, ax = plt.subplots(figsize=(7.0, 4.2))
+    cols = [COLOR["codec"] if v >= 50 else "#B4B4B4" for v in vals]
+    bars = ax.bar(range(len(bo)), vals, color=cols, edgecolor="black", linewidth=0.7, width=0.62,
+                  zorder=3)
+    for b, v, t in zip(bars, vals, bo):
+        ax.annotate(f"{v:.1f}%", (b.get_x() + b.get_width() / 2, v), ha="center", va="bottom",
+                    fontsize=9, fontweight="bold")
+        ax.annotate(f"n={rr[t]['n']}", (b.get_x() + b.get_width() / 2, 1.5), ha="center",
+                    fontsize=7.2, color="#555")
+    ax.set_xticks(range(len(bo)))
+    ax.set_xticklabels([lbl.get(t, t) for t in bo], fontsize=8.6)
+    ax.set_ylabel("mean % tokens saved (lossless)")
+    ax.set_ylim(0, 105)
+    ax.grid(axis="x", visible=False)
+    ax.set_title("RULER: the codec saves exactly the redundancy that is there, and no more")
+    ax.annotate("RULER plants distinct needles, so most tasks have\nnothing to dedup: the codec"
+                " returns ~0% and never inflates",
+                xy=(0.5, 62), fontsize=8, color="#555", style="italic", ha="left")
+    _save(fig, "codec_ruler")
+
+
 def _acc_by_arm(paper_rows, arm, budget="500"):
     vals = [int(r["acc"]) for r in paper_rows if r["arm"] == arm and r["budget"] == budget]
     return (statistics.mean(vals) if vals else float("nan"))
@@ -528,6 +563,7 @@ def main():
     fig_scaling(load(os.path.join(RES, "codec_scaling.csv")))
     fig_separation(load(os.path.join(RES, "codec_separation.csv")))
     fig_longbench(load(os.path.join(RES, "codec_longbench_bydomain.csv")))
+    fig_ruler(load(os.path.join(RES, "codec_ruler_bytask.csv")))
     fig_compare(load(os.path.join(RES, "codec_compare_summary.csv")),
                 load(os.path.join(RES, "codec_compare_bytes_summary.csv")))
     fig_scorecard(load(os.path.join(RES, "codec_compare_summary.csv")), acc)

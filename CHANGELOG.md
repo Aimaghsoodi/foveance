@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format is based on
 
 ## [0.5.0] - 2026-07-16 (the codec-everywhere release)
 ### Added
+- **Shared-prefix template pass** (`RedundancyCodec(template=True)`, `compress(..., template=True)`):
+  factors the prefix shared by a run of near-identical lines out once
+  (`[fov:tpl 20 "src/service/module_"]` + the suffixes), recovering the intra-line redundancy that
+  line-level dedup structurally cannot see. Exactly invertible via the new
+  `foveance.expand_templates()`, never inflates, and takes the head-to-head from 75.4% to **82.4%**
+  saved — past LLMLingua-2 matched (79.8%) while remaining lossless with 100% of facts preserved.
+  **Opt-in by design**: it measured 0.90 vs 0.95 mean accuracy at 14% fewer tokens on the five-model
+  benchmark (one task in twenty, within noise, but not measurably free), and the default must stay
+  safe to enable unconditionally.
+- **RULER public benchmark arm** (`bench/fetch_ruler.py`, `bench/codec_ruler.py`): 480 real examples
+  across all task families at 4k/8k/16k. Serves as a negative control — RULER plants distinct
+  needles, so the codec correctly saves ~0% on `qa`/`niah_multikey` and never inflates, while
+  removing 91.4% on the one family that genuinely repeats. All 480 round-trip exactly.
+- `.foveance.toml` now also carries the `codec` and `agentic_codec` switches, so the codec can be
+  turned on once per machine/project instead of per invocation.
 - **Lossless codec on the agentic (tool-use) paths** (`foveance proxy --agentic-codec` /
   `FOVEANCE_AGENTIC_CODEC=1`): on tool-using requests the codec now runs *across* the old tool
   payloads in place, collapsing cross-message repeats (re-listed dirs, retried stack traces,

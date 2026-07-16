@@ -334,6 +334,19 @@ def test_config_file_sets_defaults(tmp_path, monkeypatch):
 
 
 @requires_tomllib
+def test_config_file_sets_codec_flags(tmp_path, monkeypatch):
+    # 0.5: the codec switches are settable once in ~/.foveance.toml / ./.foveance.toml rather than
+    # re-passed on every invocation.
+    from foveance.cli import _proxy_from_args
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".foveance.toml").write_text("codec = true\nagentic_codec = true\n")
+    for var in ("FOVEANCE_CODEC", "FOVEANCE_AGENTIC_CODEC"):
+        monkeypatch.delenv(var, raising=False)
+    proxy, _ = _proxy_from_args(_proxy_args())
+    assert proxy.apply_codec is True and proxy.agentic_codec is True
+
+
+@requires_tomllib
 def test_env_var_overrides_config_file(tmp_path, monkeypatch):
     from foveance.cli import _proxy_from_args
     monkeypatch.chdir(tmp_path)
