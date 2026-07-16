@@ -1,8 +1,7 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/aimaghsoodi/foveance/main/assets/logo-dark.png">
-    <img alt="Foveance" src="https://raw.githubusercontent.com/aimaghsoodi/foveance/main/assets/logo.png" width="440">
-  </picture>
+  <a href="https://github.com/aimaghsoodi/foveance">
+    <img alt="Foveance — the token-optimization codec for LLM agents. Cut input tokens up to 82%, losslessly." src="https://raw.githubusercontent.com/aimaghsoodi/foveance/main/assets/social-card.png" width="760">
+  </a>
 </p>
 
 <p align="center"><b>The token-optimization codec for LLM agents. Cut input tokens up to <b>82%</b> — <b>losslessly</b>. Nothing dropped, every fact kept, not one line of your app changed.</b></p>

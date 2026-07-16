@@ -1,11 +1,14 @@
 site_name: Foveance
-site_description: Anticipatory context allocation for long-horizon LLM agents
+site_description: A lossless token-optimization codec for LLM agents — cut input tokens up to 82%, nothing dropped.
+site_url: https://aimaghsoodi.github.io/foveance/
 repo_url: https://github.com/aimaghsoodi/foveance
 theme:
   name: readthedocs
+  custom_dir: docs/overrides
 nav:
   - Home: index.md
   - Usage: usage.md
+  - Compression (the codec): compression.md
   - Architecture: architecture.md
   - Theory: theory.md
   - Baselines: baselines.md

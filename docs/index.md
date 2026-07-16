@@ -1,15 +1,23 @@
 # Foveance
 
-**Cut your LLM token bill by 60%+ — without changing your code or your answers.**
+<p align="center">
+  <a href="https://github.com/aimaghsoodi/foveance">
+    <img alt="Foveance — the lossless token codec for LLM context, up to 82% fewer tokens" src="https://raw.githubusercontent.com/aimaghsoodi/foveance/main/assets/social-card.png" width="720">
+  </a>
+</p>
 
-When you chat with an AI agent for a while, the conversation history keeps piling up. You pay for
-every old message on every new turn, and past a point the model actually gets *worse* because the
-important facts are buried under clutter. Foveance keeps the parts of the history that still matter,
-trims the parts that don't, and hands the model a shorter context — same answers, a fraction of the
-tokens. Nothing is deleted forever, and you don't change a line of your app.
+**A lossless token-optimization codec for LLM agents. Cut input tokens up to 82% — nothing dropped.**
 
-In real tests it kept full accuracy while using **60–64% fewer tokens**, and correctly recalled a
-buried fact that the full, uncompressed history got *wrong*.
+Your AI agent re-sends its whole history on every turn — the same directory listings, tool outputs
+and stack traces, over and over. You pay for all of it, every time. Foveance is a real compression
+**codec** for that context: like `gzip` finds repeated bytes, it finds the text that already
+appeared and replaces it with a short back-reference — removing **tokens** without removing
+**information**. It is exactly reversible (`unpack(pack(x)) == x`), so nothing is summarised or
+dropped and every fact survives, and you don't change a line of your app.
+
+On real agent traffic that is **75% fewer input tokens** (up to **82%** with the template pass), and
+across five models it answered *more* accurately than the uncompressed context (**0.95 vs 0.90**) —
+stripping the repetition helps the model find the fact.
 
 ## Get started in 30 seconds
 

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{# Social-share preview (Open Graph + Twitter) so links to the docs render the Foveance card. #}
+{% block extrahead %}
+  {{ super() }}
+  {% set card = "https://raw.githubusercontent.com/aimaghsoodi/foveance/main/assets/social-card.png" %}
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Foveance — a lossless token codec for LLM context">
+  <meta property="og:description" content="Cut LLM input tokens up to 82% — losslessly. Nothing dropped, every fact kept.">
+  <meta property="og:image" content="{{ card }}">
+  <meta property="og:url" content="https://aimaghsoodi.github.io/foveance/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Foveance — a lossless token codec for LLM context">
+  <meta name="twitter:description" content="Cut LLM input tokens up to 82% — losslessly. Nothing dropped, every fact kept.">
+  <meta name="twitter:image" content="{{ card }}">
+{% endblock %}

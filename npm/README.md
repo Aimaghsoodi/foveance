@@ -1,11 +1,18 @@
 # foveance-proxy (npm launcher)
 
-**Cut your LLM token bill by 60%+ without changing your code or your answers.**
+<p align="center">
+  <a href="https://github.com/aimaghsoodi/foveance">
+    <img alt="Foveance — the lossless token codec for LLM context, up to 82% fewer tokens" src="https://raw.githubusercontent.com/aimaghsoodi/foveance/main/assets/social-card.png" width="640">
+  </a>
+</p>
 
-Your AI agent's chat history piles up — you pay for every old message on every new turn, and the
-model gets worse as important facts get buried. [Foveance](https://github.com/aimaghsoodi/foveance)
-automatically keeps what matters and trims the rest, so you get the same answers for a fraction of
-the tokens.
+**Cut LLM input tokens up to 82% — losslessly.** Not one line of your app changed.
+
+Your AI agent re-sends its whole history on every turn — the same listings, tool outputs and stack
+traces, over and over. [Foveance](https://github.com/aimaghsoodi/foveance) is a real **lossless
+codec** for that context: like `gzip` finds repeated bytes, it replaces text that already appeared
+with a compact back-reference, removing tokens without removing information. Nothing is dropped,
+every fact survives.
 
 This is a tiny Node launcher for the Foveance proxy, so users of Node-based AI tools (Claude Code,
 OpenAI Codex, opencode, Crush, Continue, ...) can start it with one command, without a manual
