@@ -45,7 +45,8 @@ from foveance.embedders import HashingEmbedder  # noqa: E402
 from foveance.predictor import AnticipatoryPredictor, PredictorConfig  # noqa: E402
 from foveance.store import Fidelity, Item, MultiFidelityStore, default_renderer  # noqa: E402
 
-ARMS = ["full", "recency", "digest", "reactive_afm", "foveance", "codec", "foveance+codec"]
+ARMS = ["full", "recency", "digest", "reactive_afm", "foveance", "codec", "codec_tpl",
+        "foveance+codec"]
 
 
 # ---- task generation ------------------------------------------------------------------------
@@ -125,12 +126,17 @@ def _llmlingua2(text: str, target: int) -> str:
 
 def assemble(task: dict, arm: str, budget: int) -> str:
     items = task["items"]
-    codec = RedundancyCodec(min_run=1, token_counter=_counter)
+    # `codec` is the line-only codec; `codec_tpl` adds the shared-prefix template pass. Keeping both
+    # arms lets us verify that the extra savings cost no accuracy, rather than assuming it.
+    codec = RedundancyCodec(min_run=1, token_counter=_counter, template=False)
 
     if arm == "full":
         text_items = items
     elif arm == "codec":
         text_items = codec.render(items)[0]
+    elif arm == "codec_tpl":
+        text_items = RedundancyCodec(min_run=1, token_counter=_counter,
+                                     template=True).render(items)[0]
     elif arm == "llmlingua2":
         # match the lossy compressor to the codec's output size, then compress the raw context
         raw = "\n\n".join(f"[{i}]\n{t}" for i, t in items)
@@ -241,7 +247,7 @@ def _summary(rows: list) -> None:
     print("\narm             acc    tokens   gold-visible")
     for arm in ARMS + ["llmlingua2"]:
         if arm not in by:
-            continue
+            continue  # arm not present in this CSV (e.g. an opt-in arm was not run)
         a = by[arm]
         print(f"  {arm:15s} {statistics.mean(a['acc']):.2f}  {statistics.mean(a['tok']):7.0f}   "
               f"{statistics.mean(a['vis']):.2f}")

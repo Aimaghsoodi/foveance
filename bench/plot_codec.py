@@ -334,13 +334,13 @@ def fig_compare(a_rows, b_rows):
     # -- Panel (a): in-context (tokens) -----------------------------------------------------
     a_lbl = {"recency": "recency", "digest": "digest (AFM)",
              "llmlingua2": "LLMLingua-2\n(matched)", "llmlingua2_aggr": "LLMLingua-2\n(aggressive)",
-             "codec": "codec (ours)"}
-    a_order = ["recency", "digest", "llmlingua2", "llmlingua2_aggr", "codec"]
+             "codec": "codec (ours)", "codec_tpl": "codec+template\n(ours)"}
+    a_order = ["recency", "digest", "llmlingua2", "llmlingua2_aggr", "codec", "codec_tpl"]
     ra = {r["method"]: r for r in a_rows}
     order = [m for m in a_order if m in ra]
     y = list(range(len(order)))
     saved = [float(ra[m]["mean_saved_pct"]) for m in order]
-    colors = [GREEN if m == "codec" else GREY for m in order]
+    colors = [GREEN if m.startswith("codec") else GREY for m in order]
     axa.barh(y, saved, color=colors, edgecolor="black", linewidth=0.7, height=0.62, zorder=3)
     axa.set_yticks(y)
     axa.set_yticklabels([a_lbl[m] for m in order])
@@ -348,9 +348,10 @@ def fig_compare(a_rows, b_rows):
         ll = int(ra[m]["pct_lossless"]) >= 100
         fk = int(ra[m]["pct_fact_preserved"])
         tag = ("lossless" if ll else "lossy") + f", facts {fk}%"
+        ours = m.startswith("codec")
         axa.annotate(f"{saved[yi]:.0f}%   ({tag})", (saved[yi] + 1.2, yi), va="center",
-                     fontsize=8.3, fontweight="bold" if m == "codec" else "normal",
-                     color=DARK if m == "codec" else "#555555")
+                     fontsize=8.3, fontweight="bold" if ours else "normal",
+                     color=DARK if ours else "#555555")
     axa.set_xlim(0, 118)
     axa.set_xlabel("mean % tokens saved")
     axa.set_title("(a)  In-context compressors — output must stay legible", fontsize=10.5)
@@ -358,28 +359,30 @@ def fig_compare(a_rows, b_rows):
     axa.invert_yaxis()
 
     # -- Panel (b): transport/storage (bytes) -----------------------------------------------
-    b_order = ["gzip", "zlib", "bz2", "lzma", "zstd", "brotli", "codec"]
+    b_order = ["gzip", "zlib", "bz2", "lzma", "zstd", "brotli", "foveance_vault", "codec"]
+    b_lbl = {"foveance_vault": "Foveance vault\n(codec+Brotli, ours)", "codec": "codec (ours)"}
     rb = {r["method"]: r for r in b_rows}
     bo = [m for m in b_order if m in rb]
     yb = list(range(len(bo)))
     bsaved = [float(rb[m]["mean_saved_pct"]) for m in bo]
-    bcol = [GREEN if m == "codec" else GREY for m in bo]
+    bcol = [GREEN if m in ("codec", "foveance_vault") else GREY for m in bo]
     axb.barh(yb, bsaved, color=bcol, edgecolor="black", linewidth=0.7, height=0.62, zorder=3)
     axb.set_yticks(yb)
-    axb.set_yticklabels([("codec (ours)" if m == "codec" else m) for m in bo])
+    axb.set_yticklabels([b_lbl.get(m, m) for m in bo], fontsize=8.5)
     for yi, m in zip(yb, bo):
-        leg = "legible" if int(rb[m]["pct_legible"]) >= 100 else "NOT legible"
+        leg = "legible" if int(rb[m]["pct_legible"]) >= 100 else "not legible"
+        ours = m in ("codec", "foveance_vault")
         axb.annotate(f"{bsaved[yi]:.0f}%   ({leg})", (bsaved[yi] + 1.2, yi), va="center",
-                     fontsize=8.3, fontweight="bold" if m == "codec" else "normal",
-                     color=DARK if m == "codec" else "#555555")
+                     fontsize=8.3, fontweight="bold" if ours else "normal",
+                     color=DARK if ours else "#555555")
     axb.set_xlim(0, 118)
     axb.set_xlabel("mean % bytes saved")
     axb.set_title("(b)  Transport/storage codecs — output is opaque bytes", fontsize=10.5)
     axb.grid(axis="y", visible=False)
     axb.invert_yaxis()
 
-    fig.suptitle("Only the codec compresses losslessly while staying model-readable",
-                 fontsize=12, fontweight="bold", y=1.02)
+    fig.suptitle("Foveance leads the legible-lossless class, and matches the best byte codec for "
+                 "storage", fontsize=12, fontweight="bold", y=1.02)
     fig.tight_layout()
     _save(fig, "codec_compare")
 
@@ -407,10 +410,12 @@ def fig_scorecard(cmp_rows, paper_rows):
     if not cmp_rows:
         return
     cm = {r["method"]: r for r in cmp_rows}
-    order = ["recency", "digest", "llmlingua2", "llmlingua2_aggr", "codec"]
+    order = ["recency", "digest", "llmlingua2", "llmlingua2_aggr", "codec_tpl", "codec"]
     names = {"recency": "recency", "digest": "digest (AFM)", "llmlingua2": "LLMLingua-2 (matched)",
-             "llmlingua2_aggr": "LLMLingua-2 (aggressive)", "codec": "codec (ours)"}
-    e2e = {"recency": "recency", "digest": "digest", "llmlingua2": "llmlingua2", "codec": "codec"}
+             "llmlingua2_aggr": "LLMLingua-2 (aggressive)", "codec": "codec (ours, default)",
+             "codec_tpl": "codec+template (ours, opt-in)"}
+    e2e = {"recency": "recency", "digest": "digest", "llmlingua2": "llmlingua2", "codec": "codec",
+           "codec_tpl": "codec_tpl"}
     cols = ["tokens\nsaved", "legible?", "lossless?", "facts\nkept", "end-to-end\naccuracy",
             "acc spread\n(5 models)"]
     rows = [m for m in order if m in cm]
@@ -436,7 +441,7 @@ def fig_scorecard(cmp_rows, paper_rows):
 
     for k, m in enumerate(rows):
         ri = len(rows) - 1 - k
-        emph = m == "codec"
+        emph = m.startswith("codec")
         ax.text(0.5, ri + 0.5, names[m], ha="center", va="center", fontsize=8.2,
                 fontweight="bold" if emph else "normal")
         saved = g(m, "mean_saved_pct")

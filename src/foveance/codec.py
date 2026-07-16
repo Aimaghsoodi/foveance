@@ -35,6 +35,8 @@ honest.
 """
 from __future__ import annotations
 
+import json as _json
+import re as _re
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Optional, Sequence, Union
 
@@ -100,6 +102,55 @@ def _ref_text(length: int, src_id: str, src_line: int) -> str:
     return f"[fov:rpt {length} @{where}]"
 
 
+# -- template (shared-prefix) factoring ---------------------------------------------------------
+# Line-level dedup removes lines that repeat *exactly*. It cannot touch the residual redundancy
+# *inside* a run of near-identical lines -- the shared timestamp/log-level/path prefix that agent
+# tool output emits on every line ("src/service/module_00.py", "..._01.py", ...). A byte codec picks
+# that up with entropy coding, but only by emitting bytes no model can read. Factoring the shared
+# prefix out once recovers most of it while staying plain, legible text (arguably *more* readable:
+# it names the shared structure) and exactly invertible.
+_TPL_RE = _re.compile(r"^\[fov:tpl (\d+) (.*)\]$")
+
+
+def _tpl_header(n: int, prefix: str) -> str:
+    """Header declaring that the next ``n`` lines are each ``prefix`` + the written suffix."""
+    return f"[fov:tpl {n} {_json.dumps(prefix)}]"
+
+
+def _common_prefix(strings: Sequence[str]) -> str:
+    """Longest character-wise common prefix of ``strings`` (empty for an empty/singleton-free set)."""
+    if not strings:
+        return ""
+    lo, hi = min(strings), max(strings)
+    for i, ch in enumerate(lo):
+        if i >= len(hi) or hi[i] != ch:
+            return lo[:i]
+    return lo
+
+
+def expand_templates(text: str) -> str:
+    """Inverse of the template pass: re-materialise every ``[fov:tpl n "prefix"]`` block.
+
+    Exact: ``expand_templates(templated) == pre_template_text`` for any text this module produced.
+    Lines that are not part of a template block pass through untouched, so it is safe to run on any
+    context (including one that was never templated).
+    """
+    lines = text.split("\n")
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        m = _TPL_RE.match(lines[i])
+        if m:
+            n, prefix = int(m.group(1)), _json.loads(m.group(2))
+            body = lines[i + 1:i + 1 + n]
+            out.extend(prefix + s for s in body)
+            i += 1 + n
+        else:
+            out.append(lines[i])
+            i += 1
+    return "\n".join(out)
+
+
 class RedundancyCodec:
     """Reversible cross-item line dictionary codec.
 
@@ -114,15 +165,71 @@ class RedundancyCodec:
     strictly cheaper than the line it replaces, so ``min_run=1`` dominates any larger threshold
     (measured: 76.1% vs. 75.6% saved at ``min_run=2`` on the redundancy suite) while never inflating
     and never affecting losslessness.
+
+    ``template`` enables a second, complementary pass: after exact-line dedup, runs of consecutive
+    literal lines that share a long prefix are factored so the prefix is written once
+    (:func:`expand_templates` inverts it exactly). This recovers the *intra*-line redundancy that
+    line-level dedup structurally cannot see, taking the redundancy suite from 76.1% to 83.1% saved,
+    and it is applied per-run only when measured to save tokens, so it can never inflate.
+
+    It is **off by default, deliberately**. The pass is exactly lossless, but it changes the *surface
+    form* a model reads (a declared prefix plus per-line suffixes rather than whole lines), and on the
+    five-model benchmark the templated arm scored $0.90$ mean accuracy against the line-only codec's
+    $0.95$ at 14% fewer tokens (a one-task difference at n=20, i.e. within noise, but not measurably
+    free). Foveance's default must be the setting that is safe to switch on unconditionally, so the
+    extra savings are opt-in; enable ``template=True`` when tokens matter more than the last point of
+    small-model accuracy. See docs/compression.md for both operating points.
     """
 
     def __init__(self, min_run: int = 1, token_counter: Optional[Callable[[str], int]] = None,
-                 max_candidates: int = 128) -> None:
+                 max_candidates: int = 128, template: bool = False, min_tpl_run: int = 3,
+                 min_prefix: int = 8) -> None:
         if min_run < 1:
             raise ValueError("min_run must be >= 1")
         self.min_run = min_run
         self.count = token_counter or _default_counter
         self.max_candidates = max_candidates
+        self.template = template
+        self.min_tpl_run = min_tpl_run
+        self.min_prefix = min_prefix
+
+    # -- template pass ------------------------------------------------------------------------
+    def _templatize(self, lines: list) -> list:
+        """Factor shared prefixes out of runs of consecutive literal lines. Pointers pass through.
+
+        Exactly invertible by :func:`expand_templates`; applied per-run only when it saves tokens.
+        """
+        out: list = []
+        i, n = 0, len(lines)
+        while i < n:
+            if lines[i].startswith("[fov:"):          # a reference: never fold into a template
+                out.append(lines[i])
+                i += 1
+                continue
+            j = i
+            while j < n and not lines[j].startswith("[fov:"):
+                j += 1
+            run = lines[i:j]                           # a maximal run of literal lines
+            k = 0
+            while k < len(run):
+                m = k + 1
+                while m < len(run) and len(_common_prefix(run[k:m + 1])) >= self.min_prefix:
+                    m += 1
+                sub = run[k:m]
+                cp = _common_prefix(sub)
+                if len(sub) >= self.min_tpl_run and len(cp) >= self.min_prefix:
+                    header = _tpl_header(len(sub), cp)
+                    templated = self.count(header) + sum(self.count(s[len(cp):]) for s in sub)
+                    plain = sum(self.count(s) for s in sub)
+                    if templated < plain:              # only when it actually saves
+                        out.append(header)
+                        out.extend(s[len(cp):] for s in sub)
+                        k = m
+                        continue
+                out.append(run[k])
+                k += 1
+            i = j
+        return out
 
     # -- core: pack / unpack (the lossless codec) -------------------------------------------
     def pack(self, items: Sequence[tuple]) -> list:
@@ -202,6 +309,8 @@ class RedundancyCodec:
                     lines.append(_ref_text(tok.length, src_id, src_line))
                 else:
                     lines.append(tok)
+            if self.template:
+                lines = self._templatize(lines)
             dedup = "\n".join(lines)
             rendered.append((item_id, dedup))
             per_item.append({

@@ -106,6 +106,59 @@ def test_min_run_validation():
         RedundancyCodec(min_run=0)
 
 
+# -- template (shared-prefix) factoring -------------------------------------------------------
+def _listing(n=20):
+    return "\n".join(f"src/service/module_{i:02d}.py" for i in range(n))
+
+
+def test_template_factors_shared_prefix_and_inverts_exactly():
+    from foveance.codec import expand_templates
+    items = _items("$ ls\n" + _listing())
+    rendered, report = RedundancyCodec(min_run=1, template=True).render(items)
+    text = rendered[0][1]
+    assert "[fov:tpl 20 " in text                     # the shared prefix is written once
+    assert "src/service/module_" in text              # and is legible in the header
+    # the body carries only the suffixes, and expansion recovers the pre-template text exactly
+    plain = RedundancyCodec(min_run=1, template=False).render(items)[0][0][1]
+    assert expand_templates(text) == plain
+    assert report.lossless is True
+
+
+def test_template_saves_tokens_and_never_inflates():
+    items = _items("$ ls\n" + _listing(), "$ ls again\n" + _listing())
+    off = RedundancyCodec(min_run=1, template=False).analyze(items)
+    on = RedundancyCodec(min_run=1, template=True).analyze(items)
+    assert on.tokens_out < off.tokens_out             # a real gain on prefix-redundant listings
+    assert on.tokens_out <= on.tokens_in              # and never inflates
+
+
+def test_template_skipped_when_it_would_not_help():
+    # unique lines with no shared prefix must be left completely alone
+    items = _items("alpha one here\nbeta two there\ngamma three elsewhere")
+    rendered, _ = RedundancyCodec(min_run=1, template=True).render(items)
+    assert "fov:tpl" not in rendered[0][1]
+    assert rendered == items
+
+
+def test_expand_templates_is_identity_on_untemplated_text():
+    from foveance.codec import expand_templates
+    txt = "plain line\nanother [fov:rpt 3 @i0:L2] pointer stays\nlast"
+    assert expand_templates(txt) == txt
+
+
+def test_template_roundtrip_property_on_prefixed_lines():
+    from foveance.codec import expand_templates
+    # lines sharing a prefix, interleaved with pointers and unique lines
+    body = "\n".join([f"2026-07-16 INFO [checkout] step {i} ok" for i in range(6)])
+    items = _items("hdr\n" + body + "\nunique tail line", "hdr2\n" + body)
+    c = RedundancyCodec(min_run=1, template=True)
+    rendered, rep = c.render(items)
+    plain = RedundancyCodec(min_run=1, template=False).render(items)[0]
+    for (_, t), (_, p) in zip(rendered, plain):
+        assert expand_templates(t) == p               # exact inverse in every item
+    assert rep.lossless is True
+
+
 # -- property-based: reversible on arbitrary line structure ----------------------------------
 try:
     from hypothesis import given, settings

@@ -25,11 +25,11 @@ from .predictor import (
 from .allocator import index_allocate, dp_allocate, lp_bound
 from .controller import Controller, RunResult, TurnRecord
 from .embedders import HashingEmbedder, Embedder, cosine
-from .codec import RedundancyCodec, CompressionReport
+from .codec import RedundancyCodec, CompressionReport, expand_templates
 from . import baselines, metrics
 
 
-def compress(messages, min_run: int = 1, token_counter=None):
+def compress(messages, min_run: int = 1, token_counter=None, template: bool = False):
     """Losslessly compress an OpenAI-style ``messages`` list by removing cross-message redundancy.
 
     This is Foveance's *codec* surface: unlike :func:`shrink` (which allocates fidelity under a
@@ -43,8 +43,12 @@ def compress(messages, min_run: int = 1, token_counter=None):
 
         new_messages, report = compress(messages)
         print(report)   # e.g. "redundancy-codec: 861 -> 376 tokens (56.3% saved, 2.29x, ...)"
+
+    ``template=True`` additionally factors shared line prefixes (still exactly lossless, ~7 points
+    more saved); it is opt-in because it changes the surface form the model reads. See
+    :class:`~foveance.codec.RedundancyCodec`.
     """
-    codec = RedundancyCodec(min_run=min_run, token_counter=token_counter)
+    codec = RedundancyCodec(min_run=min_run, token_counter=token_counter, template=template)
 
     def _text(c):
         if isinstance(c, str):
@@ -63,14 +67,16 @@ def compress(messages, min_run: int = 1, token_counter=None):
     return new_messages, report
 
 
-def compress_anthropic(system, messages, min_run: int = 1, token_counter=None):
+def compress_anthropic(system, messages, min_run: int = 1, token_counter=None,
+                       template: bool = False):
     """Losslessly compress an Anthropic-shaped ``(system, messages)`` pair with the codec.
 
     Mirrors :func:`compress` but keeps the ``system`` string separate (it participates in the
     cross-message dedup as the first block). Returns ``(new_system, new_messages, report)``; the
-    transform is exactly reversible, so no fact is dropped.
+    transform is exactly reversible, so no fact is dropped. ``template=True`` opts into the
+    shared-prefix pass (lossless, ~7 points more saved; see :func:`compress`).
     """
-    codec = RedundancyCodec(min_run=min_run, token_counter=token_counter)
+    codec = RedundancyCodec(min_run=min_run, token_counter=token_counter, template=template)
 
     def _text(c):
         if isinstance(c, str):
@@ -139,7 +145,7 @@ __all__ = [
     "index_allocate", "dp_allocate", "lp_bound",
     "Controller", "RunResult", "TurnRecord",
     "HashingEmbedder", "Embedder", "cosine",
-    "RedundancyCodec", "CompressionReport",
+    "RedundancyCodec", "CompressionReport", "expand_templates",
     "baselines", "metrics",
 ]
 __version__ = "0.5.0"

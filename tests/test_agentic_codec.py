@@ -15,7 +15,7 @@ Chat, OpenAI Responses), that turning the agentic codec on:
   7. actually removes cross-message redundancy (codec_saved_tokens > 0),
 plus the codec's own exact round-trip on those payloads.
 """
-from foveance.codec import RedundancyCodec
+from foveance.codec import RedundancyCodec, expand_templates
 from foveance.proxy import FoveanceProxy
 
 # a large (> agentic_min_chars), internally- and cross-message-redundant tool payload
@@ -29,11 +29,18 @@ def _codec_off_default():
 
 
 def _no_fact_lost(original_payloads, output_text):
-    """Every unique line of every eligible payload must appear verbatim somewhere in the output."""
+    """Every unique line of every eligible payload must still be recoverable from the output.
+
+    Templated runs write a shared prefix once and the per-line suffixes after it, so a line is not
+    always a verbatim substring; it is exactly recoverable via :func:`expand_templates` (which the
+    model reads directly as a declared prefix). Expanding first is the correct check: it asserts the
+    information is present, not that a particular surface form is.
+    """
     flat = set()
     for p in original_payloads:
         flat |= set(p.split("\n"))
-    return all(line in output_text for line in flat if line)
+    recovered = expand_templates(output_text)
+    return all(line in recovered for line in flat if line)
 
 
 def _codec_roundtrip_exact(payloads):

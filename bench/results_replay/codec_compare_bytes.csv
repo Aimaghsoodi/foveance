@@ -5,6 +5,7 @@ doc,method,bytes,saved_pct,legible,lossless
 0,lzma,508,88.1,False,True
 0,zstd,422,90.2,False,True
 0,brotli,361,91.6,False,True
+0,foveance_vault,415,90.3,False,True
 0,codec,1198,72.0,True,True
 1,gzip,476,89.9,False,True
 1,zlib,464,90.2,False,True
@@ -12,6 +13,7 @@ doc,method,bytes,saved_pct,legible,lossless
 1,lzma,516,89.1,False,True
 1,zstd,432,90.9,False,True
 1,brotli,362,92.3,False,True
+1,foveance_vault,403,91.5,False,True
 1,codec,1206,74.5,True,True
 2,gzip,477,90.3,False,True
 2,zlib,465,90.5,False,True
@@ -19,6 +21,7 @@ doc,method,bytes,saved_pct,legible,lossless
 2,lzma,520,89.4,False,True
 2,zstd,433,91.2,False,True
 2,brotli,367,92.5,False,True
+2,foveance_vault,423,91.4,False,True
 2,codec,1198,75.6,True,True
 3,gzip,476,90.3,False,True
 3,zlib,464,90.5,False,True
@@ -26,6 +29,7 @@ doc,method,bytes,saved_pct,legible,lossless
 3,lzma,516,89.5,False,True
 3,zstd,430,91.2,False,True
 3,brotli,368,92.5,False,True
+3,foveance_vault,402,91.8,False,True
 3,codec,1201,75.5,True,True
 4,gzip,469,91.3,False,True
 4,zlib,457,91.5,False,True
@@ -33,6 +37,7 @@ doc,method,bytes,saved_pct,legible,lossless
 4,lzma,512,90.5,False,True
 4,zstd,423,92.2,False,True
 4,brotli,368,93.2,False,True
+4,foveance_vault,423,92.2,False,True
 4,codec,1198,77.8,True,True
 5,gzip,474,90.8,False,True
 5,zlib,462,91.0,False,True
@@ -40,6 +45,7 @@ doc,method,bytes,saved_pct,legible,lossless
 5,lzma,516,90.0,False,True
 5,zstd,428,91.7,False,True
 5,brotli,369,92.8,False,True
+5,foveance_vault,405,92.1,False,True
 5,codec,1199,76.7,True,True
 6,gzip,474,90.4,False,True
 6,zlib,462,90.6,False,True
@@ -47,6 +53,7 @@ doc,method,bytes,saved_pct,legible,lossless
 6,lzma,516,89.5,False,True
 6,zstd,431,91.2,False,True
 6,brotli,375,92.4,False,True
+6,foveance_vault,422,91.4,False,True
 6,codec,1201,75.6,True,True
 7,gzip,480,90.3,False,True
 7,zlib,468,90.5,False,True
@@ -54,4 +61,5 @@ doc,method,bytes,saved_pct,legible,lossless
 7,lzma,524,89.4,False,True
 7,zstd,431,91.3,False,True
 7,brotli,355,92.8,False,True
+7,foveance_vault,412,91.6,False,True
 7,codec,1207,75.5,True,True
