@@ -53,9 +53,9 @@ All notable changes to this project are documented here. The format is based on
   realising the paper's storage-side result. Reads transparently handle both compressed and legacy
   plaintext rows, so existing vaults keep working (a `blob` column is migrated in automatically).
 
-## [0.4.0] - Unreleased, folded into 0.5.0 (the codec release)
-This release folds in the previously-unreleased 0.3 interactive-compression work (listed below)
-and adds the lossless cross-item codec as the headline feature.
+## [0.4.0] - 2026-07-14 (the codec release)
+Adds the lossless cross-item codec as the headline feature, on top of the 0.3 interactive-
+compression work.
 ### Added
 - **Cross-item redundancy codec** (`foveance.codec.RedundancyCodec`, `foveance.compress`,
   `foveance compress FILE`): an LZ-family dictionary coder specialised to the line granularity of
@@ -73,7 +73,7 @@ and adds the lossless cross-item codec as the headline feature.
   (up to ~90%+ token reduction on long stale-heavy context, **loss-free via `foveance_expand`**,
   not for free) alongside the guaranteed-lossless 2.3× floor. See `docs/compression.md`.
 
-## [0.3.0] - Unreleased, folded into 0.5.0 (the interactive-compression release)
+## [0.3.0] - 2026-07-12 (the interactive-compression release)
 ### Added
 - **Anticipatory agentic compression** (`--agentic-allocator`): old tool-transcript payloads get
   graded fidelities (full/digest/gist/pointer) from the same anticipatory allocator plain chat
