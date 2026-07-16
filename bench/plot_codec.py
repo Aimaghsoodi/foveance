@@ -166,16 +166,15 @@ def fig_accuracy_by_model(rows):
                       label=LABEL[arm], yerr=cis, capsize=2.5,
                       error_kw=dict(elinewidth=0.8, alpha=0.7))
         for b, mv in zip(bars, means):
-            if mv > 0.02:
-                ax.annotate(f"{mv:.2f}", (b.get_x() + b.get_width() / 2, mv), ha="center",
-                            va="bottom", fontsize=7, color="#222")
+            ax.annotate(f"{mv:.2f}", (b.get_x() + b.get_width() / 2, max(mv, 0.0)), ha="center",
+                        va="bottom", fontsize=6.6, color="#222")
     ax.set_xticks(x)
     ax.set_xticklabels(models, fontsize=9)
     ax.set_ylabel("answer accuracy")
-    ax.set_title("Per-model accuracy: codec matches/exceeds full; lossy arms at floor")
-    ax.set_ylim(0, 1.12)
+    ax.set_title("Per-model accuracy: the codec is consistent; LLMLingua-2 swings 0.25--1.00")
+    ax.set_ylim(0, 1.14)
     ax.grid(axis="x", visible=False)
-    ax.legend(ncol=4, loc="upper center", columnspacing=1.0, handletextpad=0.4)
+    ax.legend(ncol=4, loc="upper center", columnspacing=1.0, handletextpad=0.4, fontsize=8)
     _save(fig, "codec_accuracy_by_model")
 
 
@@ -385,6 +384,136 @@ def fig_compare(a_rows, b_rows):
     _save(fig, "codec_compare")
 
 
+def _acc_by_arm(paper_rows, arm, budget="500"):
+    vals = [int(r["acc"]) for r in paper_rows if r["arm"] == arm and r["budget"] == budget]
+    return (statistics.mean(vals) if vals else float("nan"))
+
+
+def _acc_range_by_arm(paper_rows, arm, budget="500"):
+    per = {}
+    for r in paper_rows:
+        if r["arm"] == arm and r["budget"] == budget:
+            per.setdefault(r["model"], []).append(int(r["acc"]))
+    means = [statistics.mean(v) for v in per.values()]
+    return (min(means), max(means)) if means else (float("nan"), float("nan"))
+
+
+# ---- Figure 9: master scorecard (every in-context method x every axis) ----------------------
+def fig_scorecard(cmp_rows, paper_rows):
+    """One figure that answers 'which method wins, on which axis' for the in-context class. Rows are
+    the methods a practitioner chooses between; columns are the axes that decide correctness and
+    cost. Colour encodes good (green) to bad (red); the codec is the only row green on every
+    correctness axis. Byte codecs are a different (storage) class and live in Fig.~compare(b)."""
+    if not cmp_rows:
+        return
+    cm = {r["method"]: r for r in cmp_rows}
+    order = ["recency", "digest", "llmlingua2", "llmlingua2_aggr", "codec"]
+    names = {"recency": "recency", "digest": "digest (AFM)", "llmlingua2": "LLMLingua-2 (matched)",
+             "llmlingua2_aggr": "LLMLingua-2 (aggressive)", "codec": "codec (ours)"}
+    e2e = {"recency": "recency", "digest": "digest", "llmlingua2": "llmlingua2", "codec": "codec"}
+    cols = ["tokens\nsaved", "legible?", "lossless?", "facts\nkept", "end-to-end\naccuracy",
+            "acc spread\n(5 models)"]
+    rows = [m for m in order if m in cm]
+
+    def g(m, key):
+        return float(cm[m][key])
+
+    fig, ax = plt.subplots(figsize=(10.0, 0.66 * len(rows) + 2.1))
+    ax.set_xlim(0, len(cols) + 1); ax.set_ylim(0, len(rows) + 1)
+    ax.axis("off")
+    GOOD, MID, BAD, NA = "#2E9E6B", "#F0C64B", "#D9605A", "#E9E9E9"
+
+    def cell(ci, ri, text, color, bold=False, tcol="#111"):
+        ax.add_patch(plt.Rectangle((ci, ri), 1, 1, facecolor=color, edgecolor="white", lw=2))
+        ax.text(ci + 0.5, ri + 0.5, text, ha="center", va="center",
+                fontsize=9, fontweight="bold" if bold else "normal", color=tcol)
+
+    for ci, c in enumerate(cols):
+        ax.text(ci + 1.5, len(rows) + 0.35, c, ha="center", va="center", fontsize=8.6,
+                fontweight="bold")
+    ax.text(0.5, len(rows) + 0.35, "method", ha="center", va="center", fontsize=8.6,
+            fontweight="bold")
+
+    for k, m in enumerate(rows):
+        ri = len(rows) - 1 - k
+        emph = m == "codec"
+        ax.text(0.5, ri + 0.5, names[m], ha="center", va="center", fontsize=8.2,
+                fontweight="bold" if emph else "normal")
+        saved = g(m, "mean_saved_pct")
+        cell(1, ri, f"{saved:.0f}%", MID)                              # saved% is neutral
+        leg = int(g(m, "pct_legible")) >= 100
+        cell(2, ri, "yes" if leg else "no", GOOD if leg else BAD, tcol="white")
+        los = int(g(m, "pct_lossless")) >= 100
+        cell(3, ri, "yes" if los else "no", GOOD if los else BAD, tcol="white")
+        fk = int(g(m, "pct_fact_preserved"))
+        cell(4, ri, f"{fk}%", GOOD if fk >= 100 else (MID if fk >= 60 else BAD),
+             tcol="white" if fk < 100 else "#111")
+        if m in e2e:
+            a = _acc_by_arm(paper_rows, e2e[m])
+            lo, hi = _acc_range_by_arm(paper_rows, e2e[m])
+            acol = GOOD if a >= 0.9 else (MID if a >= 0.6 else BAD)
+            cell(5, ri, "--" if a != a else f"{a:.2f}", NA if a != a else acol,
+                 tcol="#111" if a != a else "white")
+            spread = hi - lo if hi == hi else float("nan")
+            if spread != spread:
+                cell(6, ri, "--", NA)
+            else:
+                # consistency is only a virtue for a method that actually answers: a method that
+                # reliably scores 0 is not "green". Gate the spread colour on the mean accuracy.
+                if a < 0.3:
+                    scol = BAD
+                elif spread <= 0.25:
+                    scol = GOOD
+                elif spread <= 0.5:
+                    scol = MID
+                else:
+                    scol = BAD
+                cell(6, ri, f"{lo:.2f}-{hi:.2f}", scol, tcol="white")
+        else:
+            cell(5, ri, "--", NA); cell(6, ri, "--", NA)
+        if emph:
+            ax.add_patch(plt.Rectangle((0, ri), len(cols) + 1, 1, fill=False,
+                                       edgecolor="#00785A", lw=2.2))
+    ax.set_title("Framework scorecard: the codec is the only method green on every correctness axis",
+                 fontsize=11.5, fontweight="bold", pad=14)
+    fig.text(0.5, 0.02, "In-context methods (tokens). Byte codecs (gzip/zstd/brotli) are a separate "
+             "storage class: higher raw ratio but not legible (Fig. compare b).",
+             ha="center", fontsize=7.6, style="italic", color="#555")
+    fig.tight_layout(rect=(0, 0.04, 1, 1))
+    _save(fig, "codec_scorecard")
+
+
+# ---- Figure 10: per-model reliability (codec vs LLMLingua-2) ---------------------------------
+def fig_reliability(paper_rows):
+    """Accuracy per model for the two competitive compressors. The codec sits in a tight high band;
+    LLMLingua-2, though it preserves the fact, swings widely because dropped-token text reads
+    differently on each model. Reliability, not just mean, is the practical difference."""
+    if not paper_rows:
+        return
+    models = sorted({r["model"] for r in paper_rows})
+    fig, ax = plt.subplots(figsize=(7.2, 4.3))
+    series = [("codec", "codec (ours, lossless)", COLOR["codec"], "*", 220),
+              ("llmlingua2", "LLMLingua-2 (lossy)", COLOR["llmlingua2"], "P", 120)]
+    for arm, lbl, col, mk, sz in series:
+        ys = [_acc_by_arm([r for r in paper_rows if r["model"] == m], arm) for m in models]
+        ax.plot(range(len(models)), ys, color=col, lw=1.4, alpha=0.55, zorder=2)
+        ax.scatter(range(len(models)), ys, s=sz, marker=mk, color=col, edgecolor="black",
+                   linewidth=0.8, zorder=3, label=lbl)
+        lo, hi = min(ys), max(ys)
+        ax.annotate(f"range {hi-lo:.2f}", (len(models) - 1, ys[-1]),
+                    textcoords="offset points", xytext=(8, -2 if arm == "codec" else 10),
+                    fontsize=8, color=col, fontweight="bold")
+    ax.axhspan(0.9, 1.03, color=COLOR["codec"], alpha=0.07)
+    ax.set_xticks(range(len(models)))
+    ax.set_xticklabels(models, fontsize=9)
+    ax.set_ylabel("answer accuracy")
+    ax.set_ylim(0, 1.08)
+    ax.set_title("Reliability across models: the codec is tight and high; LLMLingua-2 is not")
+    ax.grid(axis="x", visible=False)
+    ax.legend(loc="lower center", handletextpad=0.4)
+    _save(fig, "codec_reliability")
+
+
 def main():
     acc = load(os.path.join(RES, "codec_paper.csv"))
     fig_pareto(acc)
@@ -396,6 +525,8 @@ def main():
     fig_longbench(load(os.path.join(RES, "codec_longbench_bydomain.csv")))
     fig_compare(load(os.path.join(RES, "codec_compare_summary.csv")),
                 load(os.path.join(RES, "codec_compare_bytes_summary.csv")))
+    fig_scorecard(load(os.path.join(RES, "codec_compare_summary.csv")), acc)
+    fig_reliability(acc)
     print(f"wrote PDF+PNG figures to {OUT} (accuracy rows: {len(acc)})")
 
 
