@@ -1,6 +1,8 @@
 """R3 learning loop: trace logging, trace->training reconstruction, train, and model loading."""
 import json
 
+import pytest
+
 from foveance.proxy import FoveanceProxy
 from foveance.store import Item
 from foveance.traces import TraceLogger, build_training_traces, load_model, train
@@ -22,6 +24,7 @@ def test_trace_logger_detects_referenced_items(tmp_path):
 
 
 def test_build_and_train_roundtrip(tmp_path):
+    pytest.importorskip("numpy")   # training the learned model needs the [ml]/[bench] extras
     tpath, mpath = str(tmp_path / "t.jsonl"), str(tmp_path / "m.json")
     log = TraceLogger(path=tpath)
     for turn in range(4):
@@ -61,6 +64,7 @@ def test_proxy_logs_traces_during_agentic_allocation(tmp_path):
 
 
 def test_proxy_uses_trained_future_model(tmp_path):
+    pytest.importorskip("numpy")   # training the learned model needs the [ml]/[bench] extras
     tpath, mpath = str(tmp_path / "t.jsonl"), str(tmp_path / "m.json")
     log = TraceLogger(path=tpath)
     for turn in range(3):

@@ -33,6 +33,11 @@ one step.
 - `foveance --version` / `-V` now print the version. Previously only the `foveance version`
   subcommand worked and the flags silently printed help and exited 0, which reads like a broken
   install. Regression-tested.
+- The test suite no longer hard-fails without the optional ML extras. Four tests imported `numpy`
+  (via `foveance.learned`) without a guard, so `pip install "foveance[dev]" && pytest` reported
+  four `ModuleNotFoundError` failures on an otherwise healthy install. They now
+  `pytest.importorskip("numpy")` and skip cleanly, matching how the integration tests already
+  handle optional dependencies.
 ### Changed (packaging)
 - The source distribution no longer ships `assets/` (README images are served from GitHub by
   absolute URL) or the manuscript's vector PDFs, halving it from 4.4 MB to 2.2 MB. The benchmark

@@ -144,6 +144,7 @@ def test_tokens_per_correct_and_bootstrap():
 
 # -------------------------------------------------------------------------------- learned
 def test_learned_predictor_fit_predict_save_load(tmp_path):
+    pytest.importorskip("numpy")   # the learned predictor lives behind the [ml]/[bench] extras
     from foveance.learned import LogisticFutureRelevance
     # Build a trivially separable trace: item referenced soon -> positive.
     items = [Item(f"i{j}", "tool_output", f"FACT k{j}=v{j}", 0) for j in range(6)]
@@ -164,6 +165,7 @@ def test_learned_predictor_fit_predict_save_load(tmp_path):
 
 
 def test_learned_fit_empty_is_noop():
+    pytest.importorskip("numpy")   # the learned predictor lives behind the [ml]/[bench] extras
     from foveance.learned import LogisticFutureRelevance
     m = LogisticFutureRelevance()
     before = list(m.weights)

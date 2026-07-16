@@ -56,14 +56,21 @@ Issues = "https://github.com/aimaghsoodi/foveance/issues"
 packages = ["src/foveance"]
 
 [tool.hatch.build.targets.sdist]
-# Keep the source archive to what someone actually needs to build, test, use, or re-run the
-# benchmarks. The benchmark figures (bench/plots/*.png) and every results CSV stay in: they are the
-# evidence behind the README's claims. What comes out:
+# The published archive is the product: what you need to build, install, test and run Foveance.
+# Nothing else. The measured *results* stay in (bench/plots/*.png, bench/results_replay/*.csv)
+# because they are the evidence behind the README's numbers; the harness that produced them is
+# manuscript tooling and lives in the git repo, which is where reproduction happens.
 exclude = [
-  "/assets",     # README/social images. The README references them by absolute GitHub raw URL, so
-                 # they render on PyPI without shipping ~2.2 MB of GIFs and logos in the archive.
-  "**/*.pdf",    # vector figures exist for the manuscript; the PNGs carry the identical data.
-  "/.github",    # CI definitions are repo infrastructure, not part of the distribution.
+  "/assets",              # README/social images; referenced by absolute GitHub raw URL, so they
+                          # render on PyPI without shipping ~2.2 MB of GIFs and logos.
+  "**/*.pdf",             # vector figures are for the manuscript; the PNGs carry identical data.
+  "/.github",             # CI definitions are repo infrastructure, not part of the distribution.
+  "/bench/*.py",          # the paper's benchmark harness (keep bench/results_replay + bench/plots).
+  "/bench/suites",
+  "/bench/traces",
+  "/tests/test_paper2_bench.py",   # tests the harness above; would ImportError without it.
+  "/scripts",             # maintainer/release scripts.
+  "/data",                # fetched benchmark inputs (LongBench/RULER); re-fetchable, and gitignored.
 ]
 
 [tool.pytest.ini_options]
