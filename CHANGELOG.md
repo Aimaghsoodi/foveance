@@ -52,14 +52,8 @@ All notable changes to this project are documented here. The format is based on
   now zlib-compressed (the transport-codec storage saving — up to ~50–100× on redundant content),
   realising the paper's storage-side result. Reads transparently handle both compressed and legacy
   plaintext rows, so existing vaults keep working (a `blob` column is migrated in automatically).
-- `foveance.integrations.llamaindex` (a `shrink_chat_messages` wrapper), completing the framework
-  integration matrix started in 0.1.3 (#5).
-- `--token-encoding` / `FOVEANCE_TOKEN_ENCODING` for `foveance proxy`/`wrap`: picks the tiktoken
-  encoding used by `--exact-tokens` (default stays `cl100k_base` for back-compat; pass
-  `o200k_base` for gpt-4o and newer so exact-token accounting matches the model you're actually
-  routing to).
 
-## [0.4.0] - 2026-07-14 (the codec release)
+## [0.4.0] - Unreleased, folded into 0.5.0 (the codec release)
 This release folds in the previously-unreleased 0.3 interactive-compression work (listed below)
 and adds the lossless cross-item codec as the headline feature.
 ### Added
@@ -79,7 +73,7 @@ and adds the lossless cross-item codec as the headline feature.
   (up to ~90%+ token reduction on long stale-heavy context, **loss-free via `foveance_expand`**,
   not for free) alongside the guaranteed-lossless 2.3× floor. See `docs/compression.md`.
 
-## [0.3.0] - Unreleased (the interactive-compression release)
+## [0.3.0] - Unreleased, folded into 0.5.0 (the interactive-compression release)
 ### Added
 - **Anticipatory agentic compression** (`--agentic-allocator`): old tool-transcript payloads get
   graded fidelities (full/digest/gist/pointer) from the same anticipatory allocator plain chat
@@ -121,6 +115,25 @@ and adds the lossless cross-item codec as the headline feature.
   `contextlib.closing`). Previously `with sqlite3.connect(...)` committed but never closed the
   handle, leaking one per operation and, on Windows, blocking the `.db` file from being deleted
   (broke the replay benchmark under a temp dir). Regression test added.
+
+## [0.2.0] - 2026-07-12
+### Added
+- **Foveance Pro** (optional, offline-verified): a Pro license unlocks *persistent* savings
+  accounting — the proxy's token/$ totals survive restarts (SQLite in `~/.foveance/`), the
+  dashboard shows all-time and per-day history, and `/admin/export.csv` exports it. The
+  open-source package remains fully functional without a license.
+  - `foveance license activate <key>` / `status` / `deactivate`. Keys are RSA-2048 signatures
+    over a small JSON payload, verified in pure stdlib against a bundled public modulus — no
+    network call, no phoning home, no new dependencies. The gate is a courtesy to honest users,
+    not DRM.
+  - `FoveanceProxy(savings_log=...)` persists per-request savings; `/admin/export.csv` returns
+    HTTP 402 with an activation hint when no license is active.
+- `foveance.integrations.llamaindex` (a `shrink_chat_messages` wrapper), completing the framework
+  integration matrix started in 0.1.3 (#5).
+- `--token-encoding` / `FOVEANCE_TOKEN_ENCODING` for `foveance proxy`/`wrap`: picks the tiktoken
+  encoding used by `--exact-tokens` (default stays `cl100k_base` for back-compat; pass
+  `o200k_base` for gpt-4o and newer so exact-token accounting matches the model you're actually
+  routing to).
 
 ## [0.1.3] - 2026-07-07
 ### Added
