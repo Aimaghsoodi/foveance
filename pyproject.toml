@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "foveance"
-version = "0.5.0"
-description = "Anticipatory context allocation for long-horizon black-box LLM agents"
+version = "0.5.1"
+description = "A lossless token-optimization codec for LLM agents — cut input tokens up to 82%, nothing dropped. Drop-in proxy for Claude Code, Codex, Cursor, and any OpenAI/Anthropic client."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

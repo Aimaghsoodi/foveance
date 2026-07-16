@@ -96,10 +96,10 @@ def main():
     center(d, "Foveance", font(58, "semibold"), 340, INK)
     center(d, "LOSSLESS  TOKEN  COMPRESSION", font(20, "semibold"), 410, FAINT)
 
-    center(d, "75% fewer tokens.", font(94, "black"), 500, INK)
-    # "Losslessly." on its own line with the amber accent (the whole line fits the square)
+    center(d, "Up to 82% fewer", font(94, "black"), 500, INK)
+    # "tokens. Losslessly." on its own line, amber accent (the whole line fits the square)
     f = font(94, "black")
-    a, b = "", "Losslessly."
+    a, b = "tokens. ", "Losslessly."
     wa, wb = d.textlength(a, font=f), d.textlength(b, font=f)
     x0 = (S - (wa + wb)) / 2
     d.text((x0, 604), a, font=f, fill=INK)

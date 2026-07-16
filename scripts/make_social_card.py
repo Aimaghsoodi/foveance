@@ -118,10 +118,10 @@ def main():
     d.text((MARGIN + 102, 148), "LOSSLESS  TOKEN  COMPRESSION", font=font(17, "semibold"),
            fill=FAINT)
 
-    # headline. The number is the measured in-context codec saving (bench/results_replay/
-    # codec_compare_summary.csv); "losslessly" is the differentiator, so it carries the accent.
-    h1 = fit(d, "75% fewer input tokens.", "black", 88, usable)
-    d.text((MARGIN, 244), "75% fewer input tokens.", font=h1, fill=INK)
+    # headline. "up to 82%" is the measured codec+template saving (bench/results_replay/
+    # codec_compare_summary.csv, 75.4% default -> 82.4% template); "losslessly" carries the accent.
+    h1 = fit(d, "Up to 82% fewer tokens.", "black", 88, usable)
+    d.text((MARGIN, 244), "Up to 82% fewer tokens.", font=h1, fill=INK)
     y2 = 244 + h1.size + 14
     by = font(88, "black")
     d.text((MARGIN, y2), "Losslessly", font=by, fill=AMBER)
@@ -129,7 +129,7 @@ def main():
 
     # subhead
     d.text((MARGIN, y2 + by.size + 26),
-           "A real codec for LLM context. Nothing dropped, every fact kept.",
+           "The token-optimization codec for LLM agents. Nothing dropped.",
            font=font(28, "regular"), fill=DIM)
 
     # bottom row: install pill + repo url on one baseline

@@ -1,6 +1,8 @@
-"""Foveance: anticipatory context allocation for long-horizon LLM agents.
+"""Foveance: a lossless token-optimization codec for long-horizon LLM agents.
 
 Public API:
+    from foveance import compress, compress_anthropic, expand_templates   # the lossless codec
+    from foveance import shrink, shrink_anthropic                         # budgeted allocator on top
     from foveance import Controller, Item, Fidelity, MultiFidelityStore
     from foveance import AnticipatoryPredictor, PredictorConfig
     from foveance import index_allocate, dp_allocate, lp_bound
@@ -148,4 +150,4 @@ __all__ = [
     "RedundancyCodec", "CompressionReport", "expand_templates",
     "baselines", "metrics",
 ]
-__version__ = "0.5.0"
+__version__ = "0.5.1"

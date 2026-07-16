@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-07-16 (positioning)
+Documentation and packaging metadata only; no code behaviour change. Foveance is repositioned around
+its headline feature: it is now described everywhere as **the lossless token-optimization codec**
+(up to 82% fewer input tokens, nothing dropped), with the anticipatory allocator presented as the
+optional lossy-but-recoverable layer on top. README rebuilt to lead with `compress()` and the
+codec benchmark (scorecard + 8-framework head-to-head), PyPI/npm summaries updated, and the social
+card / share square / Twitter header re-cut to "Up to 82% fewer tokens. Losslessly."
+
 ## [0.5.0] - 2026-07-16 (the codec-everywhere release)
 
 The first release since 0.2.0, and it ships everything from the 0.3 and 0.4 lines as well. Those two

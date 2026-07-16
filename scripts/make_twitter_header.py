@@ -98,7 +98,7 @@ def main():
 
     # headline (centered, one line) with amber accent
     f = font(72, "black")
-    a, b = "75% fewer input tokens. ", "Losslessly."
+    a, b = "Up to 82% fewer tokens. ", "Losslessly."
     wa, wb = d.textlength(a, font=f), d.textlength(b, font=f)
     x0 = (W - (wa + wb)) / 2
     d.text((x0, 160), a, font=f, fill=INK)

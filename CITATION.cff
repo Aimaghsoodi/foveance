@@ -10,7 +10,7 @@ type: software
 authors:
   - family-names: Maghsoodi
     given-names: Abtin
-version: 0.5.0
+version: 0.5.1
 license: Apache-2.0
 repository-code: "https://github.com/aimaghsoodi/foveance"
 url: "https://pypi.org/project/foveance/"

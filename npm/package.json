@@ -1,7 +1,7 @@
 {
   "name": "foveance-proxy",
-  "version": "0.5.0",
-  "description": "Drop-in launcher for the Foveance anticipatory context-compression proxy (OpenAI- and Anthropic-compatible). Wraps the Python `foveance proxy` so npm/npx users can start it without a manual Python step.",
+  "version": "0.5.1",
+  "description": "Drop-in launcher for the Foveance token-optimization codec proxy — cut LLM input tokens up to 82% losslessly, in front of any OpenAI- or Anthropic-compatible tool. Wraps the Python `foveance proxy` so npm/npx users can start it without a manual Python step.",
   "bin": {
     "foveance-proxy": "bin/foveance-proxy.js"
   },
