@@ -55,6 +55,17 @@ Issues = "https://github.com/aimaghsoodi/foveance/issues"
 [tool.hatch.build.targets.wheel]
 packages = ["src/foveance"]
 
+[tool.hatch.build.targets.sdist]
+# Keep the source archive to what someone actually needs to build, test, use, or re-run the
+# benchmarks. The benchmark figures (bench/plots/*.png) and every results CSV stay in: they are the
+# evidence behind the README's claims. What comes out:
+exclude = [
+  "/assets",     # README/social images. The README references them by absolute GitHub raw URL, so
+                 # they render on PyPI without shipping ~2.2 MB of GIFs and logos in the archive.
+  "**/*.pdf",    # vector figures exist for the manuscript; the PNGs carry the identical data.
+  "/.github",    # CI definitions are repo infrastructure, not part of the distribution.
+]
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]

@@ -293,6 +293,18 @@ def test_cli_version(capsys):
     assert foveance.__version__ in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("flag", ["--version", "-V"])
+def test_cli_version_flag(flag, capsys):
+    # `--version`/`-V` is what users actually type; before 0.5 both silently printed help and
+    # exited 0, which looks like a broken install. argparse's version action exits with SystemExit.
+    import foveance
+    from foveance.cli import build_parser
+    with pytest.raises(SystemExit) as e:
+        build_parser().parse_args([flag])
+    assert e.value.code == 0
+    assert foveance.__version__ in capsys.readouterr().out
+
+
 def test_cli_no_command_prints_help(capsys):
     from foveance.cli import main
     assert main([]) == 0

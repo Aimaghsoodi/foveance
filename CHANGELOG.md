@@ -5,6 +5,14 @@ All notable changes to this project are documented here. The format is based on
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.5.0] - 2026-07-16 (the codec-everywhere release)
+
+The first release since 0.2.0, and it ships everything from the 0.3 and 0.4 lines as well. Those two
+versions were developed and are documented in full below, but were never published: 0.3.0 predates
+its own vault handle-leak fix, and both predate the codec work that supersedes them. Rather than
+put superseded builds on PyPI permanently, 0.5.0 folds them in. If you are coming from 0.2.0 you get
+the 0.3 interactive-compression work, the 0.4 lossless codec, and the 0.5 codec-everywhere work in
+one step.
+
 ### Added
 - **Shared-prefix template pass** (`RedundancyCodec(template=True)`, `compress(..., template=True)`):
   factors the prefix shared by a run of near-identical lines out once
@@ -21,6 +29,15 @@ All notable changes to this project are documented here. The format is based on
   removing 91.4% on the one family that genuinely repeats. All 480 round-trip exactly.
 - `.foveance.toml` now also carries the `codec` and `agentic_codec` switches, so the codec can be
   turned on once per machine/project instead of per invocation.
+### Fixed
+- `foveance --version` / `-V` now print the version. Previously only the `foveance version`
+  subcommand worked and the flags silently printed help and exited 0, which reads like a broken
+  install. Regression-tested.
+### Changed (packaging)
+- The source distribution no longer ships `assets/` (README images are served from GitHub by
+  absolute URL) or the manuscript's vector PDFs, halving it from 4.4 MB to 2.2 MB. The benchmark
+  figures (`bench/plots/*.png`) and every results CSV are still included — they are the evidence
+  behind the README's numbers. The installed wheel is unchanged at ~82 KB.
 - **Lossless codec on the agentic (tool-use) paths** (`foveance proxy --agentic-codec` /
   `FOVEANCE_AGENTIC_CODEC=1`): on tool-using requests the codec now runs *across* the old tool
   payloads in place, collapsing cross-message repeats (re-listed dirs, retried stack traces,
@@ -53,9 +70,9 @@ All notable changes to this project are documented here. The format is based on
   realising the paper's storage-side result. Reads transparently handle both compressed and legacy
   plaintext rows, so existing vaults keep working (a `blob` column is migrated in automatically).
 
-## [0.4.0] - 2026-07-14 (the codec release)
+## [0.4.0] - developed 2026-07-14, released as part of 0.5.0 (the codec release)
 Adds the lossless cross-item codec as the headline feature, on top of the 0.3 interactive-
-compression work.
+compression work. Never published on its own; superseded by and included in 0.5.0.
 ### Added
 - **Cross-item redundancy codec** (`foveance.codec.RedundancyCodec`, `foveance.compress`,
   `foveance compress FILE`): an LZ-family dictionary coder specialised to the line granularity of
@@ -73,7 +90,8 @@ compression work.
   (up to ~90%+ token reduction on long stale-heavy context, **loss-free via `foveance_expand`**,
   not for free) alongside the guaranteed-lossless 2.3× floor. See `docs/compression.md`.
 
-## [0.3.0] - 2026-07-12 (the interactive-compression release)
+## [0.3.0] - developed 2026-07-12, released as part of 0.5.0 (the interactive-compression release)
+Never published on its own; superseded by and included in 0.5.0.
 ### Added
 - **Anticipatory agentic compression** (`--agentic-allocator`): old tool-transcript payloads get
   graded fidelities (full/digest/gist/pointer) from the same anticipatory allocator plain chat

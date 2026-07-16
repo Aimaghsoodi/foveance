@@ -450,6 +450,9 @@ def cmd_bench(args: argparse.Namespace, extra: list[str]) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="foveance", description="Anticipatory context allocation.")
+    # `foveance version` is the subcommand, but --version/-V is what everyone actually types.
+    p.add_argument("--version", "-V", action="version", version=f"foveance {__version__}",
+                   help="print the installed version and exit")
     sub = p.add_subparsers(dest="cmd")
 
     d = sub.add_parser("demo", help="offline Pareto demo (MockLLM)")

@@ -194,7 +194,49 @@ breakpoint — so it never invalidates the provider's prompt cache. See
 | **Claude Code** (live, Anthropic OAuth) — agentic in-place compression | ~71% fewer tokens on an 8-tool-call transcript | works end-to-end, tool pairing preserved |
 | **Benchmark** — Gemma/Llama/Qwen, 5 seeds | 62–64% fewer at iso-accuracy | matches full-replay accuracy |
 
-## Head-to-head vs other methods (real model + real LLMLingua-2)
+## The codec vs every other compressor (8 frameworks, all real runs)
+
+Foveance 0.5 ships a **lossless** cross-item codec. The comparison below is split by the axis that
+decides whether a method is usable at all: **can the output still be read by the model?**
+
+![framework scorecard](https://raw.githubusercontent.com/aimaghsoodi/foveance/main/assets/codec_scorecard.png)
+
+| method | tokens saved | legible? | lossless? | facts kept | end-to-end acc |
+|---|---|---|---|---|---|
+| keep-recent | 63.5% | yes | no | 12% | 0.00 |
+| digest (AFM-style) | 66.6% | yes | no | 0% | 0.00 |
+| LLMLingua-2 (matched) | 79.8% | yes | no | 100% | 0.80 |
+| LLMLingua-2 (aggressive) | 94.1% | yes | no | **62%** | — |
+| **codec** (default) | 75.4% | yes | **yes** | **100%** | **0.95** |
+| **codec + template** (opt-in) | **82.4%** | yes | **yes** | **100%** | 0.90 |
+
+Three things this shows, each measured, none of it hand-entered:
+
+1. **We're the only lossless option** that a model can still read, and with `template=True` we also
+   save *more* than LLMLingua-2 matched (82.4% vs 79.8%).
+2. **Facts survive by construction, not by luck.** Push LLMLingua-2 for savings and its fact
+   preservation collapses to 62% — it drops a third of them. The codec never can: it only replaces
+   text that already appeared.
+3. **Accuracy goes up, not down.** Across 5 local models (Gemma-2, Qwen-2.5, Llama-3.2), the codec
+   answers at **0.95** vs **0.90** for the *uncompressed* baseline, at 66% fewer tokens — stripping
+   the repeated noise helps small models find the fact.
+
+![head-to-head by class](https://raw.githubusercontent.com/aimaghsoodi/foveance/main/assets/codec_compare.png)
+
+**What about gzip/zstd/brotli?** They win on raw ratio (brotli 92.5%) and lose on the only thing
+that matters here: **you cannot put a brotli blob in a prompt**. They're storage tools — so we *use*
+one. The Foveance vault (codec + Brotli) stores at **91.5%**, level with brotli and ahead of
+gzip/zlib/lzma/bz2. We lead the in-context class *and* match the best byte codec for storage.
+
+**And when there's nothing to compress, we say so.** On RULER — which plants *distinct* needles, so
+there is no redundancy by design — the codec correctly saves ~0% and **never inflates**
+(`qa` 0.1%, `niah_multikey` 0.0%; 480 examples, all lossless). A compressor that claimed a big
+number there would be measuring padding, not information.
+
+Reproduce: `python bench/codec_compare.py --docs 8` · `python bench/codec_ruler.py` ·
+`python bench/plot_codec.py`
+
+## Head-to-head: the anticipatory allocator (real model + real LLMLingua-2)
 A long trajectory hides one load-bearing fact early amid filler; each method compresses to a
 budget, then the real model (llama3.2:1b) is asked to recall it. Only the query-aware allocators
 recall it at every budget, at **5–10× fewer tokens than full replay**:
