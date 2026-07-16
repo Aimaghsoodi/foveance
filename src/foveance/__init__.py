@@ -150,4 +150,4 @@ __all__ = [
     "RedundancyCodec", "CompressionReport", "expand_templates",
     "baselines", "metrics",
 ]
-__version__ = "0.5.1"
+__version__ = "0.5.2"

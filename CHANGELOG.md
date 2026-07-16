@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-07-16 (branding)
+Documentation and packaging metadata only; no code change. The social card ("Up to 82% fewer
+tokens. Losslessly.") is now the hero banner across the PyPI README, the npm README, and the docs
+home, and the docs carry Open Graph / Twitter `og:image` meta so shared links preview the card.
+Remaining "60%+" copy in the npm README and docs home was corrected to the lossless-codec story.
+
 ## [0.5.1] - 2026-07-16 (positioning)
 Documentation and packaging metadata only; no code behaviour change. Foveance is repositioned around
 its headline feature: it is now described everywhere as **the lossless token-optimization codec**
